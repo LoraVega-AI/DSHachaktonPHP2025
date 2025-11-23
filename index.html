@@ -1,0 +1,3963 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbanPulse Advanced Acoustic Monitor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- TensorFlow.js for YAMNet model and local LLM fallback -->
+    <script>
+        // Suppress TensorFlow kernel registration warnings
+        const originalWarn = console.warn;
+        console.warn = function(...args) {
+            if (args[0] && typeof args[0] === 'string' && args[0].includes('already registered')) {
+                return; // Suppress kernel registration warnings
+            }
+            originalWarn.apply(console, args);
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.15.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.15.0/dist/tf-backend-webgl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder@1.3.3/dist/universal-sentence-encoder.min.js"></script>
+
+    <!-- Meyda for audio feature extraction -->
+    <script src="https://cdn.jsdelivr.net/npm/meyda@5.6.0/dist/web/meyda.min.js"></script>
+
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1a2332;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --border-light: #475569;
+            --sidebar-bg: #0f1419;
+            --active-bg: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            font-weight: 400;
+            overflow-x: hidden;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            background: var(--primary-bg);
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 48px;
+            letter-spacing: -0.5px;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        /* Prevent sidebar flicker during auth check */
+        .sidebar {
+            opacity: 0;
+            transition: opacity 0.2s ease-in;
+        }
+
+        .sidebar.loaded {
+            opacity: 1;
+        }
+
+        .nav-item.hidden {
+            display: none !important;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: inherit;
+        }
+
+        .nav-item span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Main Content Area */
+        .main-wrapper {
+            flex: 1;
+            margin-left: 240px;
+            display: flex;
+            flex-direction: column;
+            width: calc(100% - 240px);
+            overflow-x: hidden;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px;
+            width: 100%;
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        /* Two-column layout for audio and image analysis */
+        .analysis-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 1400px) {
+            .analysis-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .analysis-container {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .image-upload-area {
+                padding: 40px 20px;
+            }
+
+            .big-upload-button {
+                padding: 16px 32px;
+                font-size: 14px;
+            }
+        }
+
+        /* Image Processing Section */
+        .image-analysis-section {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-upload-area {
+            border: 2px dashed var(--border-color);
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            background: var(--surface);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .image-upload-area:hover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .image-upload-area.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.7;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 12px;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .image-results-container {
+            margin-top: 32px;
+        }
+
+        .big-upload-button {
+            padding: 20px 40px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .big-upload-button:hover {
+            background: var(--accent-blue-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .big-upload-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Top Navbar */
+        .search-bar {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--secondary-bg);
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        /* Control Buttons */
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .control-button {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            position: relative;
+        }
+
+        .control-button.primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .control-button.primary:hover {
+            background: var(--accent-blue-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .control-button.secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .control-button.secondary:hover {
+            background: var(--card-bg);
+            border-color: var(--border-light);
+        }
+
+        .control-button.icon-button {
+            padding: 12px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .control-button.icon-button:hover {
+            background: var(--card-bg);
+            border-color: var(--border-light);
+            transform: translateY(-1px);
+        }
+
+        .control-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+
+        /* Welcome Banner */
+        .welcome-banner {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 48px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .welcome-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
+        }
+
+        .welcome-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .welcome-content h2 {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.8px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .welcome-content p {
+            font-size: 17px;
+            color: var(--text-secondary);
+            margin-bottom: 28px;
+            line-height: 1.7;
+        }
+
+        .browse-button {
+            padding: 12px 28px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .browse-button:hover {
+            background: var(--accent-blue-light);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Results Section */
+        .results-section {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border-color);
+        }
+
+        .results-header {
+            margin-bottom: 8px;
+        }
+
+        .status-section {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-top: 16px;
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            flex-shrink: 0;
+        }
+
+        .status-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .status-details {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .result-container {
+            min-height: 0;
+            margin-top: 8px;
+            margin-bottom: 0;
+        }
+
+        .result-container > * {
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-top: 0;
+        }
+
+        .result-container > *:first-child {
+            margin-top: 0;
+        }
+
+        .results-placeholder {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .analysis-details-section {
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+
+        .hazard-entries {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-top: 0;
+        }
+
+        .hazard-entry {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            margin-top: 0;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .hazard-entry:first-child {
+            margin-top: 0;
+        }
+
+        .hazard-entry:hover {
+            border-color: var(--border-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        .hazard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            gap: 24px;
+        }
+
+        .hazard-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: -0.5px;
+            flex: 1;
+        }
+
+        .hazard-description {
+            color: var(--text-secondary);
+            font-size: 16px;
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        .hazard-metrics {
+            display: flex;
+            gap: 32px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+        }
+
+        .metric-value {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent-blue-light);
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .status-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .status-problem {
+            background: var(--accent-orange);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .status-safe {
+            background: var(--accent-green);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .severity-text {
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .executive-conclusion {
+            background: var(--surface);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            margin-top: 16px;
+        }
+
+        .risk-assessment-summary {
+            background: var(--surface);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            margin-top: 16px;
+        }
+
+        .risk-summary-header {
+            margin-bottom: 24px;
+        }
+
+        .risk-summary-header h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .risk-summary-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .risk-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .risk-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .risk-value {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .risk-value.problem-yes {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .risk-value.problem-no {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .risk-item.risk-description {
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .risk-item.action-steps {
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .steps-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding-left: 8px;
+        }
+
+        .step-bullet {
+            color: var(--accent-blue);
+            font-weight: 700;
+        }
+
+        .step-number {
+            color: var(--accent-blue);
+            font-weight: 600;
+            min-width: 24px;
+        }
+
+        .conclusion-header {
+            margin-bottom: 20px;
+        }
+
+        .conclusion-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'Poppins', sans-serif;
+            letter-spacing: -0.3px;
+        }
+
+        .conclusion-text {
+            font-size: 16px;
+            line-height: 1.7;
+            color: var(--text-secondary);
+        }
+
+        /* Section Headers */
+        .section-header {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 28px;
+            letter-spacing: -0.5px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* API Status Section */
+        .api-status-section {
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .api-status-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .api-status-icon {
+            font-size: 20px;
+        }
+
+        .api-status-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .api-status-text {
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .api-links {
+            display: flex;
+            gap: 16px;
+            font-size: 14px;
+        }
+
+        .api-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            padding: 8px 16px;
+            border: 1px solid var(--accent-blue);
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .api-link:hover {
+            background: var(--accent-blue);
+            color: var(--primary-bg);
+        }
+
+        .model-status {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        /* Analysis Cards Grid */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        /* General Report Section */
+        .general-report-section {
+            margin-bottom: 40px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .toggle-report-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .toggle-report-btn:hover {
+            background: var(--border-color);
+            border-color: var(--accent-blue);
+        }
+
+        #toggleIcon {
+            transition: transform 0.3s ease;
+        }
+
+        .report-form-container {
+            padding: 24px;
+        }
+
+        .general-report-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input,
+        .form-textarea,
+        .form-select {
+            padding: 12px 16px;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-input::placeholder,
+        .form-textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-select option {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .file-upload-area {
+            padding: 40px;
+            background: var(--surface);
+            border: 2px dashed var(--border-color);
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .file-upload-area:hover {
+            border-color: var(--accent-blue);
+            background: var(--card-bg);
+        }
+
+        .upload-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .upload-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .upload-subtext {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .file-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .file-preview-item {
+            position: relative;
+            padding: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-preview-item .remove-file {
+            color: var(--accent-red);
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .submit-report-btn {
+            flex: 1;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .submit-report-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+
+        .cancel-report-btn {
+            padding: 14px 28px;
+            background: var(--surface);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .cancel-report-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .report-status {
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        .report-status.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
+        .report-status.error {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
+        .report-status.loading {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+        }
+
+        .location-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+
+        .gps-button {
+            padding: 10px 20px;
+            background: var(--accent-green);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gps-button:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .gps-button:active {
+            transform: translateY(0);
+        }
+
+        .location-status {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .location-status.active {
+            color: var(--accent-green);
+        }
+
+        /* Detection History Carousel */
+        .detection-history-section {
+            margin-bottom: 40px;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .section-header-clickable {
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-header-clickable:hover {
+            color: var(--accent-blue-light);
+        }
+
+        .section-header-clickable::after {
+            content: '→';
+            font-size: 24px;
+            opacity: 0.6;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+        }
+
+        .section-header-clickable:hover::after {
+            transform: translateX(4px);
+            opacity: 1;
+        }
+
+        .history-carousel-container {
+            position: relative;
+            margin: 0 auto;
+            max-width: 100%;
+        }
+
+        .history-carousel-wrapper {
+            overflow: hidden;
+            margin: 0 60px;
+        }
+
+        .history-carousel {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        .history-carousel::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        .history-carousel .card {
+            flex: 0 0 calc((100% - 24px) / 3);
+            width: calc((100% - 24px) / 3);
+            min-width: 0;
+        }
+        
+        /* Compact card styles matching history.html design */
+        .history-carousel .card-header {
+            position: relative;
+            padding: 10px 12px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+            text-align: center;
+            font-weight: 700;
+            font-size: 10px;
+            color: white;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            line-height: 1.2;
+        }
+
+        .history-carousel .card-body {
+            padding: 12px;
+        }
+
+        .history-carousel .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .history-carousel .card-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .history-carousel .card-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            padding: 10px 0;
+            border-top: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            margin: 8px 0;
+        }
+
+        .history-carousel .metric {
+            text-align: center;
+        }
+
+        .history-carousel .metric-value {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent-blue-light);
+            margin-bottom: 2px;
+        }
+
+        .history-carousel .metric-label {
+            display: block;
+            font-size: 9px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .history-carousel .card-badge {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .history-carousel .badge-critical {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .history-carousel .badge-high {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--accent-orange);
+        }
+
+        .history-carousel .badge-medium {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--accent-yellow);
+        }
+
+        .history-carousel .badge-low {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        .status-pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--accent-yellow);
+        }
+        
+        .status-solved {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-blue);
+        }
+        
+        .status-verified {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--accent-green);
+        }
+        
+        .action-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .action-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(30, 41, 59, 0.95);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10;
+            font-size: 20px;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
+        }
+
+        .carousel-arrow:hover {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .carousel-arrow.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .carousel-arrow-left {
+            left: 8px;
+        }
+
+        .carousel-arrow-right {
+            right: 8px;
+        }
+
+        .history-empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+            border-color: var(--border-light);
+        }
+        
+        .history-carousel .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            border-color: var(--accent-blue);
+        }
+
+        .card-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+        }
+
+        .card-body {
+            padding: 28px;
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+            letter-spacing: -0.4px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .card-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            font-weight: 500;
+        }
+
+        .card-description {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        .card-metrics {
+            display: flex;
+            gap: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .metric {
+            flex: 1;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-blue-light);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+
+
+        /* Loading State */
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .loading-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loading-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .content-area {
+                padding: 24px;
+            }
+
+            .search-bar {
+                padding: 20px 24px;
+            }
+
+            .control-buttons {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .main-wrapper {
+                margin-left: 200px;
+            }
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .history-carousel-wrapper {
+                margin: 0 50px;
+            }
+
+            .history-carousel .card {
+                flex: 0 0 calc((100% - 12px) / 2);
+                width: calc((100% - 12px) / 2);
+                min-width: 0;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 0;
+                overflow: hidden;
+                padding: 0;
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+            }
+
+            .content-area {
+                padding: 20px;
+            }
+
+            .history-carousel-wrapper {
+                margin: 0 45px;
+            }
+
+            .history-carousel .card {
+                flex: 0 0 100%;
+                width: 100%;
+                min-width: 0;
+            }
+
+            .carousel-arrow {
+                width: 38px;
+                height: 38px;
+                font-size: 18px;
+            }
+
+            .carousel-arrow-left {
+                left: 4px;
+            }
+
+            .carousel-arrow-right {
+                right: 4px;
+            }
+
+            .report-header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: stretch;
+            }
+
+            .toggle-report-btn {
+                width: 100%;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .file-upload-area {
+                padding: 30px 20px;
+            }
+
+            .search-bar {
+                padding: 16px;
+            }
+
+            .control-button.icon-button {
+                padding: 10px;
+                min-width: 40px;
+            }
+
+            .welcome-banner {
+                flex-direction: column;
+                text-align: center;
+                padding: 32px 24px;
+            }
+
+            .control-buttons {
+                justify-content: center;
+            }
+        }
+
+        /* Authentication Modal Styles */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .auth-modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .auth-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .auth-modal-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .auth-close {
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .auth-close:hover {
+            color: var(--text-primary);
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .auth-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .auth-input-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .auth-input-group input {
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .auth-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .auth-button {
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .auth-button:hover {
+            background: #2563eb;
+        }
+
+        .auth-button:disabled {
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .auth-switch a {
+            color: var(--accent-blue);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .auth-message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .auth-message.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .auth-message.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        .user-info {
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-info-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .logout-button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .logout-button:hover {
+            background: #dc2626;
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            
+            <!-- User Info / Login Section -->
+            <div id="authSection">
+                <!-- Guest View -->
+                <div id="guestAuth" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button class="auth-button" onclick="window.location.href='login.html'">Login</button>
+                    <button class="auth-button" style="background: var(--accent-cyan);" onclick="window.location.href='signup.html'">Register</button>
+                </div>
+                <!-- Logged In View -->
+                <div id="userAuth" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-info-text">
+                            <div class="user-info-name" id="userName">User</div>
+                            <div class="user-info-role" id="userRole">Guest</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item active" data-role="not-admin">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="map.html" class="nav-item" data-role="all">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
+                    <div class="nav-icon">G</div>
+                    <span>General</span>
+                </a>
+                <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="rankings.html" class="nav-item" id="navRankings" data-role="user">
+                    <div class="nav-icon">R</div>
+                    <span>Rankings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-wrapper">
+            <!-- Navbar with Settings -->
+            <div class="search-bar">
+                <div class="control-buttons">
+                    <button id="settingsButton" class="control-button icon-button" title="Settings">
+                        <span style="font-size: 18px;">⚙️</span>
+                    </button>
+                    <button id="profileButton" class="control-button icon-button" title="Profile">
+                        <span style="font-size: 18px;">👤</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- General Report Submission -->
+                <div class="general-report-section">
+                    <div class="report-header">
+                        <h2 class="section-header">Submit General Report</h2>
+                        <button class="toggle-report-btn" id="toggleReportBtn" onclick="toggleReportForm()">
+                            <span id="toggleIcon">▼</span> Show Form
+                        </button>
+                    </div>
+                    
+                    <div class="report-form-container" id="reportFormContainer" style="display: none;">
+                        <form id="generalReportForm" class="general-report-form">
+                            <div class="form-group">
+                                <label class="form-label">Issue Title *</label>
+                                <input type="text" id="reportTitle" class="form-input" placeholder="Brief description of the issue" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Detailed Description *</label>
+                                <textarea id="reportDescription" class="form-textarea" rows="5" placeholder="Describe the problem in detail..." required></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Severity Level</label>
+                                    <select id="reportSeverity" class="form-select">
+                                        <option value="LOW">Low</option>
+                                        <option value="MEDIUM">Medium</option>
+                                        <option value="HIGH">High</option>
+                                        <option value="CRITICAL">Critical</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Category</label>
+                                    <select id="reportCategory" class="form-select">
+                                        <option value="Roads & Infrastructure">Roads & Infrastructure</option>
+                                        <option value="Sanitation & Waste Management">Sanitation & Waste Management</option>
+                                        <option value="Street Lighting & Electricity">Street Lighting & Electricity</option>
+                                        <option value="Water & Sewage">Water & Sewage</option>
+                                        <option value="Traffic & Parking">Traffic & Parking</option>
+                                        <option value="Parks & Green Spaces">Parks & Green Spaces</option>
+                                        <option value="Public Safety & Vandalism">Public Safety & Vandalism</option>
+                                        <option value="Environment & Pollution">Environment & Pollution</option>
+                                        <option value="Animal Control">Animal Control</option>
+                                        <option value="Public Transport & Facilities">Public Transport & Facilities</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Location</label>
+                                <div class="location-controls">
+                                    <button type="button" class="gps-button" onclick="getCurrentLocation()">
+                                        <span>📍</span> Use Current Location
+                                    </button>
+                                    <span class="location-status" id="locationStatus">No location set</span>
+                                </div>
+                                <input type="hidden" id="reportLatitude" name="latitude">
+                                <input type="hidden" id="reportLongitude" name="longitude">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Or Enter Manually</label>
+                                    <input type="text" id="reportAddress" class="form-input" placeholder="Street address or landmark">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Attach Images</label>
+                                <div class="file-upload-area" onclick="document.getElementById('reportImages').click()">
+                                    <div class="upload-icon">📷</div>
+                                    <div class="upload-text">Click to upload images</div>
+                                    <div class="upload-subtext">PNG, JPG, JPEG (Max 5 files)</div>
+                                </div>
+                                <input type="file" id="reportImages" class="file-input" accept="image/*" multiple style="display: none;">
+                                <div id="imagePreview" class="file-preview"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Attach Audio Files</label>
+                                <div class="file-upload-area" onclick="document.getElementById('reportAudio').click()">
+                                    <div class="upload-icon">🎵</div>
+                                    <div class="upload-text">Click to upload audio files</div>
+                                    <div class="upload-subtext">MP3, WAV, OGG (Max 3 files)</div>
+                                </div>
+                                <input type="file" id="reportAudio" class="file-input" accept="audio/*" multiple style="display: none;">
+                                <div id="audioPreview" class="file-preview"></div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="submit-report-btn">
+                                    <span class="btn-icon">📤</span>
+                                    Submit Report
+                                </button>
+                                <button type="button" class="cancel-report-btn" onclick="resetReportForm()">
+                                    Cancel
+                                </button>
+                            </div>
+
+                            <div id="reportStatus" class="report-status" style="display: none;"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Two-column Analysis Container -->
+                <div class="analysis-container">
+                    <!-- Audio Analysis Section -->
+                    <div class="results-section">
+                    <div class="results-header">
+                        <h2 class="section-header">Audio Analysis</h2>
+                        <div class="status-section">
+                            <div class="status-indicator"></div>
+                            <div>
+                                <div class="status-text">Ready to Start Analysis</div>
+                                <div class="status-details">Click Start Analysis to begin monitoring</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audio Upload and Control Buttons -->
+                    <div style="margin-bottom: 32px; display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button id="uploadButton" class="control-button secondary">
+                            <span style="margin-right: 8px;">📁</span>Upload File
+                        </button>
+                        <input type="file" id="audioFileInput" accept="audio/*" style="display: none;">
+                        <button id="startButton" class="control-button primary">Start Analysis</button>
+                        <button id="stopButton" class="control-button secondary" disabled>Stop</button>
+                    </div>
+
+                    <!-- Results Container -->
+                    <div id="result" class="result-container">
+                        <div class="results-placeholder">
+                            <p>Analysis results will appear here once you start monitoring.</p>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Details -->
+                    <div class="analysis-details-section">
+                        <div class="hazard-entries"></div>
+                    </div>
+
+                    <!-- Executive Conclusion -->
+                    <div class="executive-conclusion">
+                        <div class="conclusion-header">
+                            <h3 class="conclusion-title">Executive Conclusion</h3>
+                        </div>
+                        <div class="conclusion-text">
+                            Waiting for analysis to begin...
+                        </div>
+                    </div>
+
+                    <!-- Risk Assessment Summary -->
+                    <div class="risk-assessment-summary" id="risk-assessment-container" style="display: none;">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                    </div>
+
+                    <!-- Image Analysis Section -->
+                    <div class="image-analysis-section">
+                        <div class="results-header">
+                            <h2 class="section-header">Image Analysis</h2>
+                            <div class="status-section" id="image-status-section">
+                                <div class="status-indicator"></div>
+                                <div>
+                                    <div class="status-text">Ready for Image Upload</div>
+                                    <div class="status-details">Upload an image to analyze infrastructure issues</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image Upload Area -->
+                        <div class="image-upload-area" id="imageUploadArea">
+                            <div class="upload-icon">📷</div>
+                            <div class="upload-text">Upload Infrastructure Image</div>
+                            <div class="upload-subtext">Click or drag and drop an image file here</div>
+                            <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+                            <button class="big-upload-button" id="imageUploadButton">Choose Image File</button>
+                        </div>
+
+                        <!-- Image Preview -->
+                        <div id="imagePreviewContainer" style="display: none;">
+                            <img id="imagePreview" class="image-preview" alt="Preview">
+                            <button class="big-upload-button" id="analyzeImageButton" style="margin-top: 20px;">Analyze Image</button>
+                        </div>
+
+                        <!-- Image Results Container -->
+                        <div id="imageResult" class="image-results-container">
+                            <div class="results-placeholder">
+                                <p>Image analysis results will appear here after upload and analysis.</p>
+                            </div>
+                        </div>
+
+                        <!-- Image Analysis Details -->
+                        <div class="analysis-details-section" id="imageAnalysisDetails">
+                            <div class="hazard-entries"></div>
+                        </div>
+
+                        <!-- Image Executive Conclusion -->
+                        <div class="executive-conclusion" id="imageExecutiveConclusion" style="display: none;">
+                            <div class="conclusion-header">
+                                <h3 class="conclusion-title">Executive Conclusion</h3>
+                            </div>
+                            <div class="conclusion-text">
+                                Waiting for image analysis...
+                            </div>
+                        </div>
+
+                        <!-- Image Risk Assessment Summary -->
+                        <div class="risk-assessment-summary" id="imageRiskAssessment" style="display: none;">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection History Section -->
+                <div class="detection-history-section" id="detectionHistorySection" style="display: none;">
+                    <h2 class="section-header section-header-clickable" onclick="window.location.href='history.html'">
+                        Detection History
+                    </h2>
+                    <div class="history-carousel-container">
+                        <div class="carousel-arrow carousel-arrow-left" id="history-arrow-left" onclick="scrollHistoryCarousel(-1)">
+                            ‹
+                        </div>
+                        <div class="history-carousel-wrapper">
+                            <div class="history-carousel" id="detection-history-carousel">
+                                <div class="loading-state">
+                                    <div class="loading-text">Loading detection history...</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-arrow carousel-arrow-right" id="history-arrow-right" onclick="scrollHistoryCarousel(1)">
+                            ›
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Hidden Status Element (for backward compatibility) -->
+        <div id="status" class="status-ready" style="display: none;">Loading YAMNet model...</div>
+
+        <!-- Results Container (populated by JavaScript) -->
+        <div id="result" style="display: none;"></div>
+    </div>
+
+    <!-- Main classifier script -->
+    <script src="classifier.js"></script>
+
+    <script>
+        // Check API key status on page load
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('analyze.php?test=llm');
+                const data = await response.json();
+
+                const statusText = document.getElementById('api-status-text');
+                const statusDiv = document.getElementById('api-status');
+
+                if (data.api_key_configured) {
+                    statusText.innerHTML = '✅ <strong>Groq API Key Configured:</strong> Advanced multimodal LLM analysis will be used for in-depth reports using all MFCC, YAMNet, and Meyda data';
+                    statusDiv.style.background = 'rgba(0, 255, 136, 0.1)';
+                    statusDiv.style.borderColor = 'var(--accent-green)';
+                } else {
+                    statusText.innerHTML = '❌ <strong>Groq API Key Not Configured:</strong> System will use fallback analysis. Click links above to configure.';
+                    statusDiv.style.background = 'rgba(255, 71, 87, 0.1)';
+                    statusDiv.style.borderColor = 'var(--accent-red)';
+
+                    if (!data.env_file_exists) {
+                        statusText.innerHTML += '<br><strong>Missing:</strong> .env file not found';
+                    } else if (!data.api_key_from_env_file && !data.api_key_from_environment) {
+                        statusText.innerHTML += '<br><strong>Missing:</strong> GROQ_API_KEY not set in .env file';
+                    } else if (!data.api_key_format_valid) {
+                        statusText.innerHTML += '<br><strong>Invalid:</strong> API key format incorrect (should start with gsk_)';
+                    }
+                }
+            } catch (error) {
+                const statusText = document.getElementById('api-status-text');
+                if (statusText) {
+                    statusText.innerHTML = '❌ <strong>Error checking API status:</strong> ' + error.message;
+                }
+            }
+        }
+
+        // Check API status when page loads
+        window.addEventListener('load', async function() {
+            // Check authentication status first
+            await checkAuthStatus();
+            
+            checkAPIStatus();
+            updateModelStatus();
+            
+            // Only load detection history if user is authenticated
+            const authResponse = await fetch('check_auth.php');
+            const authData = await authResponse.json();
+            if (authData.authenticated && authData.user && authData.user.role !== 'guest') {
+                loadDetectionHistory();
+            }
+        });
+
+        function updateModelStatus() {
+            const modelStatus = document.getElementById('model-status');
+            if (!modelStatus) return; // Element doesn't exist, skip
+            // Check if TensorFlow models are loaded after a delay
+            setTimeout(() => {
+                if (typeof tf !== 'undefined') {
+                    modelStatus.innerHTML = '✅ TensorFlow.js loaded | ' +
+                        (typeof use !== 'undefined' ? '✅ YAMNet + Meyda ready for multimodal analysis' : '⚠️ Local models unavailable - using Groq LLM');
+                } else {
+                    modelStatus.innerHTML = '❌ TensorFlow.js not loaded - using Groq LLM fallback';
+                }
+            }, 2000);
+        }
+
+        // Carousel state
+        let historyCarouselIndex = 0;
+        let historyCarouselData = [];
+
+        // Load detection history from database
+        async function loadDetectionHistory() {
+            const carousel = document.getElementById('detection-history-carousel');
+            if (!carousel) {
+                console.error('Detection history carousel element not found');
+                return;
+            }
+            
+            try {
+                const response = await fetch('get_detection_history.php?limit=50');
+                
+                // Get response text first to see what we're getting
+                const responseText = await response.text();
+                
+                if (!response.ok) {
+                    // Try to parse as JSON to get error details
+                    let errorData;
+                    try {
+                        errorData = JSON.parse(responseText);
+                    } catch (e) {
+                        errorData = { message: responseText || `HTTP error! status: ${response.status}` };
+                    }
+                    console.error('Server error response:', errorData);
+                    throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+                }
+                
+                // Parse JSON response
+                const data = JSON.parse(responseText);
+                console.log('Detection history response:', data);
+                
+                if (data.status === 'success' && data.reports && Array.isArray(data.reports) && data.reports.length > 0) {
+                    historyCarouselData = data.reports;
+                    renderHistoryCarousel();
+                } else {
+                    carousel.innerHTML = `
+                        <div class="history-empty-state" style="width: 100%;">
+                            <div class="loading-text">No detection history available</div>
+                            <div class="loading-subtext">Start an analysis to see detection history here</div>
+                        </div>
+                    `;
+                    updateCarouselArrows();
+                }
+            } catch (error) {
+                console.error('Failed to load detection history:', error);
+                carousel.innerHTML = `
+                    <div class="history-empty-state" style="width: 100%;">
+                        <div class="loading-text">Failed to load detection history</div>
+                        <div class="loading-subtext">${error.message}</div>
+                    </div>
+                `;
+                updateCarouselArrows();
+            }
+        }
+
+        // Render history carousel
+        function renderHistoryCarousel() {
+            const carousel = document.getElementById('detection-history-carousel');
+            if (!carousel || historyCarouselData.length === 0) return;
+
+            carousel.innerHTML = '';
+            
+            historyCarouselData.forEach(report => {
+                try {
+                    const card = createDetectionCard(report);
+                    carousel.appendChild(card);
+                } catch (cardError) {
+                    console.error('Error creating detection card:', cardError, report);
+                }
+            });
+
+            updateCarouselArrows();
+        }
+
+        // Scroll history carousel
+        function scrollHistoryCarousel(direction) {
+            const carousel = document.getElementById('detection-history-carousel');
+            if (!carousel || historyCarouselData.length === 0) return;
+
+            // Calculate the width of one card plus gap
+            const card = carousel.querySelector('.card');
+            if (!card) return;
+
+            const cardWidth = card.offsetWidth;
+            const gap = 24; // matches CSS gap
+            const scrollAmount = cardWidth + gap;
+
+            // Scroll the carousel
+            carousel.scrollBy({
+                left: direction * scrollAmount,
+                behavior: 'smooth'
+            });
+
+            // Update arrow states after scroll animation
+            setTimeout(updateCarouselArrows, 400);
+        }
+
+        // Update carousel arrow states
+        function updateCarouselArrows() {
+            const carousel = document.getElementById('detection-history-carousel');
+            const leftArrow = document.getElementById('history-arrow-left');
+            const rightArrow = document.getElementById('history-arrow-right');
+            
+            if (!carousel || !leftArrow || !rightArrow) return;
+
+            // Check if at start or end
+            const isAtStart = carousel.scrollLeft <= 0;
+            const isAtEnd = carousel.scrollLeft + carousel.clientWidth >= carousel.scrollWidth - 10;
+
+            leftArrow.classList.toggle('disabled', isAtStart);
+            rightArrow.classList.toggle('disabled', isAtEnd);
+        }
+
+        // Add scroll listener to update arrows
+        document.addEventListener('DOMContentLoaded', () => {
+            const carousel = document.getElementById('detection-history-carousel');
+            if (carousel) {
+                carousel.addEventListener('scroll', updateCarouselArrows);
+            }
+        });
+
+        // Create a detection card element (matching history.html design)
+        function createDetectionCard(report) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // Check if this is a general report or analysis report
+            const isGeneralReport = report.report_type === 'general';
+            
+            // Determine if this is an image analysis
+            const isImageAnalysis = parseFloat(report.rms) === 0 && (!report.frequency || report.frequency === '0Hz' || report.frequency === '0 Hz');
+            
+            // Determine card header style based on severity
+            let headerStyle = 'background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);';
+            let headerText = isGeneralReport ? 'GENERAL REPORT' : 'ANOMALY DETECTED';
+            if (report.severity === 'CRITICAL' || report.verdict === 'DANGEROUS') {
+                headerStyle = 'background: linear-gradient(135deg, var(--accent-red) 0%, var(--accent-orange) 100%);';
+                headerText = 'CRITICAL ALERT';
+            } else if (report.severity === 'HIGH' || report.verdict === 'ATTENTION') {
+                headerStyle = 'background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-yellow) 100%);';
+                headerText = 'ATTENTION REQUIRED';
+            } else if (report.severity === 'LOW' || report.verdict === 'SAFE') {
+                headerStyle = 'background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%);';
+                headerText = isGeneralReport ? 'GENERAL REPORT' : 'SAFE';
+            }
+
+            // Determine badge class
+            let badgeClass = 'badge-low';
+            if (report.severity === 'CRITICAL') badgeClass = 'badge-critical';
+            else if (report.severity === 'HIGH') badgeClass = 'badge-high';
+            else if (report.severity === 'MEDIUM') badgeClass = 'badge-medium';
+
+            // Build metrics section - show different metrics for general vs analysis reports
+            let metricsHtml = '';
+            if (isGeneralReport) {
+                // For general reports, show category and status
+                metricsHtml = `
+                    <div class="metric">
+                        <span class="metric-value">${escapeHtml(report.category || 'N/A')}</span>
+                        <span class="metric-label">Category</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value">${escapeHtml(report.status || 'OPEN')}</span>
+                        <span class="metric-label">Status</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value">${report.latitude && report.longitude ? '📍' : '—'}</span>
+                        <span class="metric-label">Location</span>
+                    </div>
+                `;
+            } else {
+                // For analysis reports, show confidence, frequency, RMS
+                metricsHtml = `
+                    <div class="metric">
+                        <span class="metric-value">${report.confidence !== null && report.confidence !== undefined ? report.confidence + '%' : 'N/A'}</span>
+                        <span class="metric-label">Confidence</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value">${report.frequency || 'N/A'}</span>
+                        <span class="metric-label">Frequency</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-value">${report.rms || 'N/A'}</span>
+                        <span class="metric-label">RMS Level</span>
+                    </div>
+                `;
+            }
+
+            // User profile section HTML
+            let userProfileHtml = '';
+            if (report.user && report.user.username) {
+                const profileImg = report.user.profile_img || `https://ui-avatars.com/api/?name=${encodeURIComponent(report.user.username)}&background=3b82f6&color=fff&size=32`;
+                userProfileHtml = `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: var(--surface); border-radius: 6px;">
+                        <img src="${profileImg}" 
+                             alt="${escapeHtml(report.user.username)}" 
+                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; cursor: pointer;"
+                             onclick="window.location.href='user_details.html?user_id=${report.user.user_id}'"
+                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(report.user.username)}&background=3b82f6&color=fff&size=32'">
+                        <div style="flex: 1;">
+                            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); cursor: pointer;" 
+                                 onclick="window.location.href='user_details.html?user_id=${report.user.user_id}'">
+                                ${escapeHtml(report.user.username)}
+                            </div>
+                            <div style="font-size: 10px; color: var(--text-muted);">Reported by</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = `
+                <div class="card-header" style="${headerStyle}">
+                    ${headerText}
+                </div>
+                <div class="card-body">
+                    ${userProfileHtml}
+                    <div class="card-title">${escapeHtml(report.hazard || 'Unknown Event')}</div>
+                    <div class="card-meta">
+                        <span>${report.timeAgo || 'Unknown time'}</span>
+                        <span>•</span>
+                        <span class="card-badge ${badgeClass}">${report.severity || 'UNKNOWN'}</span>
+                        ${isGeneralReport && report.category ? `<span>•</span><span style="color: var(--text-muted);">${escapeHtml(report.category)}</span>` : ''}
+                        <span>•</span>
+                        <span class="status-badge status-${(report.status || 'pending').toLowerCase()}">${(report.status || 'pending').toUpperCase()}</span>
+                    </div>
+                    <div class="card-metrics">
+                        ${metricsHtml}
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                        ${escapeHtml(truncateText(report.classification || report.executive_conclusion || 'No description available', 80))}
+                    </div>
+                    <div class="card-actions" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; flex-wrap: wrap;">
+                        ${report.status === 'pending' ? `
+                        <button class="action-btn solve-btn" onclick="markAsSolved(${report.id}, '${report.report_type || 'analysis'}')" style="flex: 1; min-width: 80px; padding: 6px 12px; font-size: 10px; background: var(--accent-blue); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            Mark Solved
+                        </button>
+                        ` : ''}
+                        ${report.status === 'solved' ? `
+                        <button class="action-btn verify-btn" onclick="openVerificationModal(${report.id}, '${report.report_type || 'analysis'}')" style="flex: 1; min-width: 80px; padding: 6px 12px; font-size: 10px; background: var(--accent-green); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            Verify
+                        </button>
+                        ` : ''}
+                        <button class="action-btn timeline-btn" onclick="openTimelineModal(${report.id}, '${report.report_type || 'analysis'}')" style="flex: 1; min-width: 80px; padding: 6px 12px; font-size: 10px; background: var(--accent-cyan); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            Timeline
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+        
+        // Truncate text helper function
+        function truncateText(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+        
+        // Mark report as solved (admin action)
+        async function markAsSolved(reportId, reportType) {
+            if (!confirm('Mark this report as solved?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('update_report_status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        report_id: reportId,
+                        report_type: reportType,
+                        status: 'solved'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Report marked as solved!');
+                    // Reload detection history
+                    if (typeof window.reloadDetectionHistory === 'function') {
+                        window.reloadDetectionHistory();
+                    }
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to update status'));
+                }
+            } catch (error) {
+                console.error('Error marking as solved:', error);
+                alert('Error: Failed to update report status');
+            }
+        }
+        
+        // Open verification modal
+        function openVerificationModal(reportId, reportType) {
+            // Create modal
+            const modal = document.createElement('div');
+            modal.id = 'verificationModal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+            
+            modal.innerHTML = `
+                <div style="background: var(--card-bg); border-radius: 16px; padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
+                    <h2 style="margin-top: 0; margin-bottom: 20px;">Verify Report Fix</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;">Upload a photo to verify if the issue was fixed at the location.</p>
+                    
+                    <form id="verificationForm" style="display: flex; flex-direction: column; gap: 16px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Verification Photo *</label>
+                            <input type="file" id="verificationPhoto" name="verification_photo" accept="image/*" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Was the issue fixed? *</label>
+                            <select id="isFixed" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+                                <option value="">Select...</option>
+                                <option value="true">Yes, it was fixed</option>
+                                <option value="false">No, it was not fixed</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Verified By</label>
+                            <input type="text" id="verifiedBy" placeholder="Your name" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 8px;">
+                        </div>
+                        
+                        <div style="display: flex; gap: 12px; margin-top: 8px;">
+                            <button type="submit" style="flex: 1; padding: 12px; background: var(--accent-green); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                Submit Verification
+                            </button>
+                            <button type="button" onclick="closeVerificationModal()" style="flex: 1; padding: 12px; background: var(--text-muted); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle form submission
+            document.getElementById('verificationForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await submitVerification(reportId, reportType);
+            });
+        }
+        
+        // Close verification modal
+        function closeVerificationModal() {
+            const modal = document.getElementById('verificationModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Submit verification
+        async function submitVerification(reportId, reportType) {
+            const form = document.getElementById('verificationForm');
+            const formData = new FormData();
+            
+            formData.append('report_id', reportId);
+            formData.append('report_type', reportType);
+            formData.append('is_fixed', document.getElementById('isFixed').value);
+            formData.append('verified_by', document.getElementById('verifiedBy').value || 'Unknown');
+            
+            const photoInput = document.getElementById('verificationPhoto');
+            if (photoInput.files.length > 0) {
+                formData.append('verification_photo', photoInput.files[0]);
+            }
+            
+            try {
+                const response = await fetch('verify_report.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert(data.message);
+                    closeVerificationModal();
+                    // Reload detection history
+                    if (typeof window.reloadDetectionHistory === 'function') {
+                        window.reloadDetectionHistory();
+                    }
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to verify report'));
+                }
+            } catch (error) {
+                console.error('Error verifying report:', error);
+                alert('Error: Failed to submit verification');
+            }
+        }
+
+        // Open timeline modal
+        async function openTimelineModal(reportId, reportType) {
+            const modal = document.createElement('div');
+            modal.id = 'timelineModal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 20px;';
+            
+            modal.innerHTML = `
+                <div style="background: var(--card-bg); border-radius: 16px; padding: 30px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;">
+                    <button onclick="closeTimelineModal()" style="position: absolute; top: 20px; right: 20px; background: var(--text-muted); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">×</button>
+                    <h2 style="margin-top: 0; margin-bottom: 30px; font-size: 24px;">Report Timeline</h2>
+                    <div id="timelineContent">
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading timeline...</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Load timeline data
+            try {
+                const response = await fetch(`get_report_timeline.php?id=${reportId}&type=${reportType}`);
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.report) {
+                    renderTimelineModal(data.report, document.getElementById('timelineContent'));
+                } else {
+                    document.getElementById('timelineContent').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--accent-red);">
+                            <h3>Error</h3>
+                            <p>${data.message || 'Failed to load timeline'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading timeline:', error);
+                document.getElementById('timelineContent').innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--accent-red);">
+                        <h3>Error</h3>
+                        <p>Failed to load timeline. Please try again.</p>
+                    </div>
+                `;
+            }
+            
+            // Close on background click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeTimelineModal();
+                }
+            });
+        }
+        
+        function closeTimelineModal() {
+            const modal = document.getElementById('timelineModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function renderTimelineModal(report, container) {
+            const status = report.status || 'pending';
+            const timeline = [];
+
+            // Step 1: Pending (always present)
+            timeline.push({
+                icon: '⏳',
+                title: 'Report Created',
+                description: 'Report was submitted and is pending review',
+                status: 'pending',
+                timestamp: report.created_at || report.timestamp,
+                active: true
+            });
+
+            // Step 2: Solved (if status is solved or verified)
+            if (status === 'solved' || status === 'verified') {
+                timeline.push({
+                    icon: '✅',
+                    title: 'Marked as Solved',
+                    description: 'Admin marked this report as solved',
+                    status: 'solved',
+                    timestamp: report.updated_at || report.created_at,
+                    active: status === 'solved' || status === 'verified'
+                });
+            }
+
+            // Step 3: Verification (if status is verified)
+            if (status === 'verified') {
+                timeline.push({
+                    icon: '🔍',
+                    title: 'Verified',
+                    description: report.verified_by ? `Verified by ${escapeHtml(report.verified_by)}` : 'Issue was verified as fixed',
+                    status: 'verified',
+                    timestamp: report.verified_at || report.updated_at,
+                    active: true,
+                    photo: report.verification_photo
+                });
+            } else if (status === 'solved') {
+                // Show verification pending
+                timeline.push({
+                    icon: '⏳',
+                    title: 'Verification Pending',
+                    description: 'Waiting for on-site verification with photo',
+                    status: 'pending',
+                    timestamp: null,
+                    active: false
+                });
+            }
+
+            // Build HTML
+            let html = `
+                <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                    <div style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">${escapeHtml(report.hazard || report.title || 'Unknown Report')}</div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px;">
+                        <span>Report ID: ${report.id}</span>
+                        <span>•</span>
+                        <span>Type: ${report.report_type || 'analysis'}</span>
+                        <span>•</span>
+                        <span>Severity: ${report.severity || 'UNKNOWN'}</span>
+                        <span>•</span>
+                        <span>Status: <strong>${status.toUpperCase()}</strong></span>
+                    </div>
+                </div>
+                <div style="position: relative; padding: 20px 0;">
+            `;
+
+            timeline.forEach((node, index) => {
+                const isLast = index === timeline.length - 1;
+                html += `
+                    <div style="position: relative; margin-bottom: 40px;">
+                        ${!isLast ? `<div style="position: absolute; left: 30px; top: 60px; width: 2px; height: 40px; background: ${node.active ? 'linear-gradient(180deg, var(--accent-blue), var(--accent-cyan))' : 'var(--border-color)'}; z-index: 1; box-shadow: ${node.active ? '0 0 8px rgba(59, 130, 246, 0.5)' : 'none'};"></div>` : ''}
+                        <div style="display: flex; align-items: center; gap: 20px; position: relative; z-index: 2;">
+                            <div style="width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); background: linear-gradient(135deg, ${node.status === 'pending' ? 'var(--accent-yellow), var(--accent-orange)' : node.status === 'solved' ? 'var(--accent-blue), var(--accent-cyan)' : 'var(--accent-green), var(--accent-cyan)'});">
+                                ${node.icon}
+                            </div>
+                            <div style="flex: 1; background: var(--surface); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${node.title}</div>
+                                <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">${node.description}</div>
+                                <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-muted);">
+                                    ${node.timestamp ? `<span>📅 ${formatDate(node.timestamp)}</span>` : ''}
+                                </div>
+                                ${node.photo ? `
+                                    <div style="margin-top: 12px; max-width: 300px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
+                                        <img src="${escapeHtml(node.photo)}" alt="Verification photo" style="width: 100%; height: auto; display: block;">
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // General Report Form Functionality
+        let reportImages = [];
+        let reportAudio = [];
+        let reportLocation = null;
+
+        // Get current GPS location
+        function getCurrentLocation() {
+            const statusEl = document.getElementById('locationStatus');
+            
+            if (!navigator.geolocation) {
+                statusEl.textContent = 'GPS not supported';
+                statusEl.className = 'location-status';
+                return;
+            }
+
+            statusEl.textContent = 'Getting location...';
+            statusEl.className = 'location-status';
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    document.getElementById('reportLatitude').value = lat;
+                    document.getElementById('reportLongitude').value = lng;
+                    
+                    reportLocation = { lat, lng };
+                    
+                    statusEl.textContent = `Location set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    statusEl.className = 'location-status active';
+                    
+                    // Reverse geocode to get address
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.display_name) {
+                                document.getElementById('reportAddress').value = data.display_name;
+                            }
+                        })
+                        .catch(err => console.error('Reverse geocoding error:', err));
+                },
+                function(error) {
+                    let errorMsg = 'Location error';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = 'Location permission denied';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = 'Location unavailable';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = 'Location timeout';
+                            break;
+                    }
+                    statusEl.textContent = errorMsg;
+                    statusEl.className = 'location-status';
+                }
+            );
+        }
+
+        function toggleReportForm() {
+            const container = document.getElementById('reportFormContainer');
+            const btn = document.getElementById('toggleReportBtn');
+            const icon = document.getElementById('toggleIcon');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                btn.innerHTML = '<span id="toggleIcon">▲</span> Hide Form';
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                container.style.display = 'none';
+                btn.innerHTML = '<span id="toggleIcon">▼</span> Show Form';
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Handle image uploads
+        document.addEventListener('DOMContentLoaded', () => {
+            const imageInput = document.getElementById('reportImages');
+            const audioInput = document.getElementById('reportAudio');
+            
+            if (imageInput) {
+                imageInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 5) {
+                        alert('Maximum 5 images allowed');
+                        return;
+                    }
+                    reportImages = files;
+                    displayImagePreviews(files);
+                });
+            }
+
+            if (audioInput) {
+                audioInput.addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 3) {
+                        alert('Maximum 3 audio files allowed');
+                        return;
+                    }
+                    reportAudio = files;
+                    displayAudioPreviews(files);
+                });
+            }
+
+            // Handle form submission
+            const reportForm = document.getElementById('generalReportForm');
+            if (reportForm) {
+                reportForm.addEventListener('submit', handleReportSubmit);
+            }
+        });
+
+        function displayImagePreviews(files) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-preview-item';
+                item.innerHTML = `
+                    <span>📷 ${file.name}</span>
+                    <span class="remove-file" onclick="removeImage(${index})">×</span>
+                `;
+                preview.appendChild(item);
+            });
+        }
+
+        function displayAudioPreviews(files) {
+            const preview = document.getElementById('audioPreview');
+            preview.innerHTML = '';
+            
+            files.forEach((file, index) => {
+                const item = document.createElement('div');
+                item.className = 'file-preview-item';
+                item.innerHTML = `
+                    <span>🎵 ${file.name}</span>
+                    <span class="remove-file" onclick="removeAudio(${index})">×</span>
+                `;
+                preview.appendChild(item);
+            });
+        }
+
+        function removeImage(index) {
+            reportImages.splice(index, 1);
+            displayImagePreviews(reportImages);
+            const input = document.getElementById('reportImages');
+            input.value = '';
+        }
+
+        function removeAudio(index) {
+            reportAudio.splice(index, 1);
+            displayAudioPreviews(reportAudio);
+            const input = document.getElementById('reportAudio');
+            input.value = '';
+        }
+
+        async function handleReportSubmit(e) {
+            e.preventDefault();
+            
+            const statusDiv = document.getElementById('reportStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'report-status loading';
+            statusDiv.textContent = '📤 Submitting report...';
+
+            try {
+                const formData = new FormData();
+                formData.append('title', document.getElementById('reportTitle').value);
+                formData.append('description', document.getElementById('reportDescription').value);
+                formData.append('severity', document.getElementById('reportSeverity').value);
+                formData.append('category', document.getElementById('reportCategory').value);
+                formData.append('timestamp', new Date().toISOString());
+                
+                // Add location data
+                const lat = document.getElementById('reportLatitude').value;
+                const lng = document.getElementById('reportLongitude').value;
+                const address = document.getElementById('reportAddress').value;
+                
+                if (lat && lng) {
+                    formData.append('latitude', lat);
+                    formData.append('longitude', lng);
+                }
+                if (address) {
+                    formData.append('address', address);
+                }
+
+                // Append images
+                reportImages.forEach((file, index) => {
+                    formData.append(`image_${index}`, file);
+                });
+
+                // Append audio files
+                reportAudio.forEach((file, index) => {
+                    formData.append(`audio_${index}`, file);
+                });
+
+                const response = await fetch('submit_report.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    statusDiv.className = 'report-status success';
+                    statusDiv.textContent = '✅ Report submitted successfully!';
+                    
+                    // Reset form after 2 seconds
+                    setTimeout(() => {
+                        resetReportForm();
+                        toggleReportForm();
+                    }, 2000);
+                } else {
+                    throw new Error(result.message || 'Failed to submit report');
+                }
+            } catch (error) {
+                console.error('Report submission error:', error);
+                statusDiv.className = 'report-status error';
+                statusDiv.textContent = '❌ Error: ' + error.message;
+            }
+        }
+
+        function resetReportForm() {
+            document.getElementById('generalReportForm').reset();
+            reportImages = [];
+            reportAudio = [];
+            reportLocation = null;
+            document.getElementById('imagePreview').innerHTML = '';
+            document.getElementById('audioPreview').innerHTML = '';
+            document.getElementById('reportStatus').style.display = 'none';
+            document.getElementById('locationStatus').textContent = 'No location set';
+            document.getElementById('locationStatus').className = 'location-status';
+        }
+
+        // Reload detection history after a new report is generated
+        // This will be called from classifier.js after successful analysis
+        window.reloadDetectionHistory = loadDetectionHistory;
+
+        // File upload functionality
+        const uploadButton = document.getElementById('uploadButton');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const settingsButton = document.getElementById('settingsButton');
+        const profileButton = document.getElementById('profileButton');
+        
+        // Initially hide profile and settings buttons (will be shown after auth check)
+        if (settingsButton) settingsButton.style.display = 'none';
+        if (profileButton) profileButton.style.display = 'none';
+
+        // Handle upload button click
+        uploadButton.addEventListener('click', () => {
+            audioFileInput.click();
+        });
+
+        // Handle file selection
+        audioFileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file type
+            if (!file.type.startsWith('audio/')) {
+                alert('Please select an audio file');
+                return;
+            }
+
+            try {
+                // Show loading state
+                const statusSection = document.querySelector('.status-section');
+                if (statusSection) {
+                    statusSection.querySelector('.status-text').textContent = 'Processing Audio File...';
+                    statusSection.querySelector('.status-details').textContent = `Analyzing ${file.name}...`;
+                }
+
+                const resultContainer = document.getElementById('result');
+                if (resultContainer) {
+                    resultContainer.innerHTML = '<div style="color: #666; font-style: italic;">🔄 Processing uploaded audio file...</div>';
+                }
+
+                // Read file as base64
+                const base64Audio = await readFileAsBase64(file);
+                console.log('Audio file base64 encoded, length:', base64Audio.length);
+
+                // Process audio file through pipeline
+                await processUploadedAudio(file, base64Audio);
+
+            } catch (error) {
+                console.error('Error processing audio file:', error);
+                alert('Error processing audio file: ' + error.message);
+                
+                const statusSection = document.querySelector('.status-section');
+                if (statusSection) {
+                    statusSection.querySelector('.status-text').textContent = 'Error Processing File';
+                    statusSection.querySelector('.status-details').textContent = error.message;
+                }
+            } finally {
+                // Reset file input
+                audioFileInput.value = '';
+            }
+        });
+
+        // Read file as base64
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Get base64 string (remove data URL prefix)
+                    const base64 = e.target.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Process uploaded audio file through audio pipeline
+        async function processUploadedAudio(file, base64Audio) {
+            try {
+                // Create audio context
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000
+                });
+
+                // Decode audio file
+                const arrayBuffer = await file.arrayBuffer();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                // Convert to mono and resample to 16kHz if needed
+                let audioData = audioBuffer.getChannelData(0); // Get first channel
+                
+                // If stereo, mix to mono
+                if (audioBuffer.numberOfChannels > 1) {
+                    const channel1 = audioBuffer.getChannelData(0);
+                    const channel2 = audioBuffer.getChannelData(1);
+                    audioData = new Float32Array(channel1.length);
+                    for (let i = 0; i < channel1.length; i++) {
+                        audioData[i] = (channel1[i] + channel2[i]) / 2;
+                    }
+                }
+
+                // Resample to 16kHz if needed
+                if (audioBuffer.sampleRate !== 16000) {
+                    audioData = resampleAudio(audioData, audioBuffer.sampleRate, 16000);
+                }
+
+                // Process audio in chunks (similar to microphone input)
+                const chunkSize = 2048; // FFT size
+                const collectedAudioData = [];
+                
+                // Process audio in chunks
+                for (let i = 0; i < audioData.length; i += chunkSize) {
+                    const chunk = audioData.slice(i, i + chunkSize);
+                    if (chunk.length < chunkSize) break; // Skip incomplete chunks
+
+                    // Calculate RMS
+                    const rms = Math.sqrt(
+                        chunk.reduce((acc, val) => acc + val * val, 0) / chunk.length
+                    );
+
+                    // Only process chunks with sufficient signal
+                    if (rms >= 0.001) {
+                        collectedAudioData.push({
+                            timeData: Array.from(chunk),
+                            rms: rms,
+                            timestamp: Date.now() + (i / 16000 * 1000) // Approximate timestamp
+                        });
+                    }
+                }
+
+                if (collectedAudioData.length === 0) {
+                    throw new Error('No valid audio data found in file');
+                }
+
+                // Aggregate audio data (similar to microphone processing)
+                const aggregatedData = aggregateAudioDataFromFrames(collectedAudioData);
+
+                // Send to analyze.php for AI report
+                await sendAudioDataForAnalysis(aggregatedData, base64Audio);
+
+            } catch (error) {
+                console.error('Error processing audio:', error);
+                throw error;
+            }
+        }
+
+        // Aggregate audio data from frames (similar to classifier.js)
+        function aggregateAudioDataFromFrames(audioFrames) {
+            if (audioFrames.length === 0) return {};
+
+            const validFrames = audioFrames.filter(frame => frame.rms >= 0.005);
+            if (validFrames.length < 2) {
+                return {
+                    top_hazard: 'Insufficient Audio Data',
+                    confidence_score: 0.1,
+                    mfcc_array: [],
+                    rms_level: 0.001,
+                    timestamp: new Date().toISOString()
+                };
+            }
+
+            // Calculate statistics
+            const rmsValues = audioFrames.map(frame => frame.rms);
+            const avgRMS = rmsValues.reduce((a, b) => a + b, 0) / rmsValues.length;
+            const maxRMS = Math.max(...rmsValues);
+
+            // Get best frame (highest RMS)
+            const bestFrame = audioFrames.reduce((best, current) =>
+                current.rms > best.rms ? current : best, audioFrames[0]);
+
+            // Extract Meyda features if available (from classifier.js)
+            let mfccFeatures = [];
+            if (bestFrame && bestFrame.timeData) {
+                try {
+                    // Check if getMeydaFeatures is available from classifier.js
+                    if (typeof window.getMeydaFeatures === 'function') {
+                        const meydaFeatures = window.getMeydaFeatures(new Float32Array(bestFrame.timeData));
+                        mfccFeatures = meydaFeatures?.mfcc || [];
+                    } else if (typeof getMeydaFeatures === 'function') {
+                        const meydaFeatures = getMeydaFeatures(new Float32Array(bestFrame.timeData));
+                        mfccFeatures = meydaFeatures?.mfcc || [];
+                    } else {
+                        // Fallback: create basic MFCC-like features from audio data
+                        console.warn('getMeydaFeatures not available, using basic features');
+                        mfccFeatures = Array(13).fill(0).map((_, i) => {
+                            const start = Math.floor((i / 13) * bestFrame.timeData.length);
+                            const end = Math.floor(((i + 1) / 13) * bestFrame.timeData.length);
+                            const chunk = bestFrame.timeData.slice(start, end);
+                            return chunk.reduce((a, b) => a + Math.abs(b), 0) / chunk.length;
+                        });
+                    }
+                } catch (e) {
+                    console.warn('Could not extract Meyda features:', e);
+                    // Fallback to basic features
+                    mfccFeatures = Array(13).fill(0);
+                }
+            }
+
+            // Classify audio characteristics (simplified)
+            const primaryHazard = classifyAudioFromRMS(avgRMS, maxRMS);
+
+            return {
+                top_hazard: primaryHazard,
+                confidence_score: Math.min((avgRMS * 2 + validFrames.length / audioFrames.length) / 3, 1),
+                mfcc_array: mfccFeatures,
+                rms_level: avgRMS,
+                max_rms: maxRMS,
+                active_frames: validFrames.length,
+                total_frames: audioFrames.length,
+                timestamp: new Date().toISOString(),
+                audio_source: 'Uploaded File'
+            };
+        }
+
+        // Simple audio classification based on RMS
+        function classifyAudioFromRMS(avgRMS, maxRMS) {
+            if (maxRMS > 0.3) return 'Loud, Unmuffled Engine Noise (Persistent)';
+            if (maxRMS > 0.2) return 'Grinding/Screeching';
+            if (maxRMS > 0.1) return 'Pulsating Hum/Buzz';
+            if (maxRMS > 0.05) return 'Hissing/Sizzling';
+            return 'Gurgling/Sloshing';
+        }
+
+        // Resample audio to target sample rate
+        function resampleAudio(audioData, sourceRate, targetRate) {
+            if (sourceRate === targetRate) return audioData;
+
+            const ratio = sourceRate / targetRate;
+            const newLength = Math.round(audioData.length / ratio);
+            const result = new Float32Array(newLength);
+
+            for (let i = 0; i < newLength; i++) {
+                const srcIndex = i * ratio;
+                const index = Math.floor(srcIndex);
+                const fraction = srcIndex - index;
+
+                if (index + 1 < audioData.length) {
+                    // Linear interpolation
+                    result[i] = audioData[index] * (1 - fraction) + audioData[index + 1] * fraction;
+                } else {
+                    result[i] = audioData[index];
+                }
+            }
+
+            return result;
+        }
+
+        // Send audio data to analyze.php for AI report
+        async function sendAudioDataForAnalysis(aggregatedData, base64Audio) {
+            try {
+                console.log('📤 Sending uploaded audio file for AI analysis...');
+                // Add base64 audio to the data
+                aggregatedData.audio_base64 = base64Audio;
+                aggregatedData.audio_format = 'base64';
+
+                console.log('📊 Audio data prepared:', {
+                    top_hazard: aggregatedData.top_hazard,
+                    confidence: aggregatedData.confidence_score,
+                    rms: aggregatedData.rms_level,
+                    has_audio: !!base64Audio
+                });
+
+                const response = await fetch('analyze.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(aggregatedData)
+                });
+
+                console.log('📥 Received response. Status:', response.status);
+
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('❌ Invalid JSON response:', responseText.substring(0, 500));
+                    throw new Error('Server returned invalid JSON response');
+                }
+
+                if (result.status === 'success') {
+                    console.log('✅ AI report generated successfully from uploaded audio file');
+                    console.log('📋 Report saved to database:', result.report_saved ? 'YES' : 'NO');
+                    // Update UI with the structured report
+                    const resultElement = document.getElementById('result');
+                    if (resultElement) {
+                        // Check if formatAnalysisResults is available from classifier.js
+                        if (typeof window.formatAnalysisResults === 'function') {
+                            resultElement.innerHTML = window.formatAnalysisResults(result.diagnosis);
+                        } else if (typeof formatAnalysisResults === 'function') {
+                            resultElement.innerHTML = formatAnalysisResults(result.diagnosis);
+                        } else {
+                            // Fallback: display raw JSON
+                            resultElement.innerHTML = '<div style="color: var(--text-secondary);">' +
+                                '<h3 style="color: var(--text-primary); margin-bottom: 16px;">Analysis Report</h3>' +
+                                '<pre style="background: var(--surface); padding: 20px; border-radius: 8px; overflow-x: auto;">' +
+                                JSON.stringify(result.diagnosis, null, 2) + '</pre></div>';
+                        }
+                    }
+
+                    // Update status
+                    const statusSection = document.querySelector('.status-section');
+                    if (statusSection) {
+                        statusSection.querySelector('.status-text').textContent = 'Analysis Complete';
+                        statusSection.querySelector('.status-details').textContent = 'AI report generated from uploaded file';
+                    }
+
+                    // Reload detection history
+                    if (typeof window.reloadDetectionHistory === 'function') {
+                        setTimeout(() => {
+                            window.reloadDetectionHistory();
+                        }, 500);
+                    }
+                } else {
+                    throw new Error(result.message || 'Analysis failed');
+                }
+
+            } catch (error) {
+                console.error('Error sending audio data:', error);
+                throw error;
+            }
+        }
+
+        // Placeholder handlers for settings and profile buttons
+        settingsButton.addEventListener('click', () => {
+            window.location.href = 'settings.html';
+        });
+
+        profileButton.addEventListener('click', () => {
+            window.location.href = 'profile.html';
+        });
+
+        // Image upload functionality
+        const imageUploadArea = document.getElementById('imageUploadArea');
+        const imageFileInput = document.getElementById('imageFileInput');
+        const imageUploadButton = document.getElementById('imageUploadButton');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeImageButton = document.getElementById('analyzeImageButton');
+        const imageResult = document.getElementById('imageResult');
+        let currentImageBase64 = null;
+
+        // Handle upload button click
+        imageUploadButton.addEventListener('click', () => {
+            imageFileInput.click();
+        });
+
+        // Handle upload area click
+        imageUploadArea.addEventListener('click', (e) => {
+            if (e.target !== imageFileInput && e.target !== imageUploadButton && e.target !== analyzeImageButton) {
+                imageFileInput.click();
+            }
+        });
+
+        // Handle drag and drop
+        imageUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            imageUploadArea.classList.add('dragover');
+        });
+
+        imageUploadArea.addEventListener('dragleave', () => {
+            imageUploadArea.classList.remove('dragover');
+        });
+
+        imageUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            imageUploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                handleImageFile(files[0]);
+            }
+        });
+
+        // Handle file selection
+        imageFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                handleImageFile(file);
+            }
+        });
+
+        // Handle image file
+        async function handleImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file');
+                return;
+            }
+
+            try {
+                // Read file as base64
+                const base64 = await readImageAsBase64(file);
+                currentImageBase64 = base64;
+
+                // Show preview
+                imagePreview.src = URL.createObjectURL(file);
+                imagePreviewContainer.style.display = 'block';
+                imageUploadArea.style.display = 'none';
+
+                // Update status
+                const statusSection = document.getElementById('image-status-section');
+                if (statusSection) {
+                    statusSection.querySelector('.status-text').textContent = 'Image Ready';
+                    statusSection.querySelector('.status-details').textContent = `Loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                }
+
+            } catch (error) {
+                console.error('Error loading image:', error);
+                alert('Error loading image: ' + error.message);
+            }
+        }
+
+        // Read image as base64
+        function readImageAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Get base64 string (remove data URL prefix)
+                    const base64 = e.target.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Handle analyze button
+        analyzeImageButton.addEventListener('click', async () => {
+            if (!currentImageBase64) {
+                alert('Please upload an image first');
+                return;
+            }
+
+            try {
+                // Disable button and show loading
+                analyzeImageButton.disabled = true;
+                analyzeImageButton.textContent = 'Analyzing...';
+
+                const statusSection = document.getElementById('image-status-section');
+                if (statusSection) {
+                    statusSection.querySelector('.status-text').textContent = 'Analyzing Image...';
+                    statusSection.querySelector('.status-details').textContent = 'Processing image with AI...';
+                }
+
+                imageResult.innerHTML = '<div style="color: #666; font-style: italic;">🔄 Analyzing image with AI...</div>';
+
+                // Send image to analyze.php for LLM analysis
+                await analyzeImage(currentImageBase64);
+
+            } catch (error) {
+                console.error('Error analyzing image:', error);
+                alert('Error analyzing image: ' + error.message);
+
+                const statusSection = document.getElementById('image-status-section');
+                if (statusSection) {
+                    statusSection.querySelector('.status-text').textContent = 'Analysis Failed';
+                    statusSection.querySelector('.status-details').textContent = error.message;
+                }
+            } finally {
+                analyzeImageButton.disabled = false;
+                analyzeImageButton.textContent = 'Analyze Image';
+            }
+        });
+
+        // Get GPS location helper function
+        function getGPSLocation() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) {
+                    resolve({ latitude: null, longitude: null });
+                    return;
+                }
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                    },
+                    (error) => {
+                        console.log('GPS error:', error.message);
+                        resolve({ latitude: null, longitude: null });
+                    },
+                    { timeout: 5000, enableHighAccuracy: false }
+                );
+            });
+        }
+
+        // Analyze image with LLM
+        async function analyzeImage(base64Image) {
+            try {
+                // Get GPS location
+                const location = await getGPSLocation();
+                
+                // Prepare image analysis data
+                const imageData = {
+                    image_base64: base64Image,
+                    image_format: 'base64',
+                    analysis_type: 'image',
+                    timestamp: new Date().toISOString(),
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                };
+
+                // Use separate image analysis endpoint
+                const response = await fetch('analyze_image.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(imageData)
+                });
+
+                const responseText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('Invalid JSON response:', responseText.substring(0, 500));
+                    console.error('Full response:', responseText);
+                    // Try to extract error message if it's HTML or plain text
+                    let errorMessage = 'Server returned invalid JSON response';
+                    if (responseText.includes('error') || responseText.includes('Error')) {
+                        // Try to find error message in response
+                        const errorMatch = responseText.match(/"message"\s*:\s*"([^"]+)"/);
+                        if (errorMatch) {
+                            errorMessage = errorMatch[1];
+                        } else {
+                            errorMessage = 'Server error: ' + responseText.substring(0, 200);
+                        }
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                if (result.status === 'success') {
+                    // Format image analysis results (separate from audio)
+                    formatImageAnalysisResults(result.diagnosis);
+
+                    // Reload detection history after successful image analysis
+                    if (typeof window.reloadDetectionHistory === 'function') {
+                        setTimeout(() => {
+                            window.reloadDetectionHistory();
+                        }, 500); // Small delay to ensure database save is complete
+                    }
+
+                } else {
+                    throw new Error(result.message || 'Image analysis failed');
+                }
+
+            } catch (error) {
+                console.error('Error analyzing image:', error);
+                throw error;
+            }
+        }
+
+        // Format image analysis results (separate function to avoid affecting audio section)
+        function formatImageAnalysisResults(diagnosis) {
+            // Update image result container - show the actual image
+            let imageHtml = '<div style="color: var(--text-secondary); padding: 20px; background: var(--surface); border-radius: 12px;">';
+            imageHtml += '<h3 style="color: var(--text-primary); margin-bottom: 16px;">Image Analysis Complete</h3>';
+            
+            // Show the analyzed image
+            if (currentImageBase64 || imagePreview.src) {
+                const imageSrc = imagePreview.src || ('data:image/jpeg;base64,' + currentImageBase64);
+                imageHtml += '<div style="margin-bottom: 20px; text-align: center;">';
+                imageHtml += '<img src="' + imageSrc + '" alt="Analyzed Image" style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
+                imageHtml += '</div>';
+            }
+            
+            // Show category if available
+            if (diagnosis.category) {
+                imageHtml += '<div style="margin-bottom: 16px; padding: 12px; background: var(--accent-cyan); background-opacity: 0.1; border-left: 4px solid var(--accent-cyan); border-radius: 4px;">';
+                imageHtml += '<strong style="color: var(--text-primary);">Category:</strong> ';
+                imageHtml += '<span style="color: var(--text-secondary);">' + escapeHtml(diagnosis.category) + '</span>';
+                imageHtml += '</div>';
+            }
+            
+            if (!diagnosis.detected_signatures || diagnosis.detected_signatures.length === 0) {
+                imageHtml += '<p>No issues detected in the image.</p>';
+                imageHtml += '</div>';
+                imageResult.innerHTML = imageHtml;
+                return;
+            }
+            
+            imageHtml += '<p style="margin-bottom: 0;">Found ' + diagnosis.detected_signatures.length + ' issue(s) in the image. See details below.</p>';
+            imageHtml += '</div>';
+            imageResult.innerHTML = imageHtml;
+
+            // Clear image hazard entries (use image-specific container)
+            const imageHazardEntries = document.querySelector('#imageAnalysisDetails .hazard-entries');
+            if (imageHazardEntries) {
+                imageHazardEntries.innerHTML = '';
+
+                // Process detected signatures for IMAGE section only
+                diagnosis.detected_signatures.forEach(signature => {
+                    const hazardEntry = createImageHazardEntry(signature, diagnosis);
+                    imageHazardEntries.appendChild(hazardEntry);
+                });
+            }
+
+            // Update image executive conclusion (image-specific element)
+            const imageExecutiveConclusion = document.getElementById('imageExecutiveConclusion');
+            if (imageExecutiveConclusion) {
+                imageExecutiveConclusion.style.display = 'block';
+                const conclusionText = imageExecutiveConclusion.querySelector('.conclusion-text');
+                if (conclusionText && diagnosis.executive_conclusion) {
+                    conclusionText.textContent = diagnosis.executive_conclusion;
+                }
+            }
+
+            // Show risk assessment if available (image-specific)
+            if (diagnosis.risk_assessment) {
+                addImageRiskAssessmentSummary(diagnosis);
+            }
+
+            // Update image status section (image-specific)
+            const statusSection = document.getElementById('image-status-section');
+            if (statusSection) {
+                statusSection.querySelector('.status-text').textContent = 'Analysis Complete';
+                statusSection.querySelector('.status-details').textContent = 'AI report generated from image';
+            }
+        }
+
+        // Create hazard entry for image analysis (separate from audio)
+        function createImageHazardEntry(signature, diagnosis) {
+            const entry = document.createElement('div');
+            entry.className = 'hazard-entry';
+
+            const severityClass = signature.severity === 'CRITICAL' ? 'status-problem' : 
+                                 (signature.severity === 'HIGH' ? 'status-problem' : 'status-safe');
+
+            entry.innerHTML = `
+                <div class="hazard-header">
+                    <div class="hazard-name">${escapeHtml(signature.signature_name || 'Issue Detected')}</div>
+                    <div class="status-indicator">
+                        <span class="${severityClass}">${signature.status || 'PROBLEM'}</span>
+                        <div class="severity-text">${signature.severity || 'UNKNOWN'}</div>
+                    </div>
+                </div>
+                <div class="hazard-description">${escapeHtml(signature.classification || 'No description available')}</div>
+                ${signature.recommended_action ? `
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                    <strong style="color: var(--text-primary);">Recommended Action:</strong>
+                    <p style="color: var(--text-secondary); margin-top: 8px;">${escapeHtml(signature.recommended_action)}</p>
+                </div>
+                ` : ''}
+            `;
+
+            return entry;
+        }
+
+        // Add risk assessment summary for image (similar to audio)
+        function addImageRiskAssessmentSummary(diagnosis) {
+            const riskContainer = document.getElementById('imageRiskAssessment');
+            if (!riskContainer || !diagnosis.risk_assessment) return;
+
+            const risk = diagnosis.risk_assessment;
+            riskContainer.style.display = 'block';
+            riskContainer.innerHTML = `
+                <div class="risk-summary-header">
+                    <h3>Risk Assessment Summary</h3>
+                </div>
+                <div class="risk-summary-content">
+                    <div class="risk-item">
+                        <div class="risk-label">Severity</div>
+                        <div class="risk-value ${risk.severity === 'CRITICAL' || risk.severity === 'HIGH' ? 'problem-yes' : 'problem-no'}">${risk.severity || 'N/A'}</div>
+                    </div>
+                    <div class="risk-item">
+                        <div class="risk-label">Is This a Problem?</div>
+                        <div class="risk-value ${risk.is_problem === 'YES' ? 'problem-yes' : 'problem-no'}">${risk.is_problem || 'N/A'}</div>
+                    </div>
+                    <div class="risk-item">
+                        <div class="risk-label">Should Investigate?</div>
+                        <div class="risk-value ${risk.should_investigate === 'YES' ? 'problem-yes' : 'problem-no'}">${risk.should_investigate || 'N/A'}</div>
+                    </div>
+                    ${risk.risk_description ? `
+                    <div class="risk-item risk-description">
+                        <div class="risk-label">Risk Description</div>
+                        <div class="risk-value">${risk.risk_description}</div>
+                    </div>
+                    ` : ''}
+                    ${risk.action_steps && risk.action_steps.length > 0 ? `
+                    <div class="risk-item action-steps">
+                        <div class="risk-label">Recommended Actions</div>
+                        <div class="steps-content">
+                            ${risk.action_steps.map((step, index) => `
+                                <div class="step-item">
+                                    <span class="step-number">${index + 1}.</span>
+                                    <span>${step}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Reset image upload
+        function resetImageUpload() {
+            currentImageBase64 = null;
+            imagePreviewContainer.style.display = 'none';
+            imageUploadArea.style.display = 'block';
+            imageFileInput.value = '';
+            imageResult.innerHTML = '<div class="results-placeholder"><p>Image analysis results will appear here after upload and analysis.</p></div>';
+        }
+
+        // ============================================
+        // AUTHENTICATION FUNCTIONS
+        // ============================================
+
+        let currentUser = null;
+        let currentRole = 'guest';
+
+        // Check authentication status on page load
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php');
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    currentUser = data.user;
+                    currentRole = data.user.role;
+                    updateUIForAuth(true, data.user);
+                } else {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                updateUIForAuth(false, null);
+            }
+        }
+
+        // Update UI based on authentication status
+        // Update UI based on authentication status - Unified class-based approach
+        function updateUIForAuth(isAuthenticated, user) {
+            console.log('🔐 [index.html] Updating UI for auth:', { isAuthenticated, user });
+            
+            const guestAuth = document.getElementById('guestAuth');
+            const userAuth = document.getElementById('userAuth');
+            const sidebar = document.getElementById('mainSidebar');
+            const detectionHistorySection = document.getElementById('detectionHistorySection');
+
+            // Update auth section
+            if (isAuthenticated && user) {
+                guestAuth.style.display = 'none';
+                userAuth.style.display = 'block';
+                document.getElementById('userName').textContent = user.username;
+                document.getElementById('userRole').textContent = user.role;
+                
+                // Show detection history section for authenticated users
+                if (detectionHistorySection) {
+                    detectionHistorySection.style.display = 'block';
+                }
+                
+                // Show profile and settings buttons for authenticated users
+                if (settingsButton) settingsButton.style.display = 'flex';
+                if (profileButton) profileButton.style.display = 'flex';
+                
+                console.log('✅ User authenticated:', user.username, user.role);
+            } else {
+                guestAuth.style.display = 'flex';
+                userAuth.style.display = 'none';
+                
+                // Hide detection history section for guests
+                if (detectionHistorySection) {
+                    detectionHistorySection.style.display = 'none';
+                }
+                
+                // Hide profile and settings buttons for guests
+                if (settingsButton) settingsButton.style.display = 'none';
+                if (profileButton) profileButton.style.display = 'none';
+                
+                console.log('❌ Not authenticated (guest)');
+            }
+
+            // Update sidebar navigation visibility based on role using data-role attributes
+            const allNavItems = document.querySelectorAll('.nav-item[data-role]');
+            console.log('📋 Found nav items:', allNavItems.length);
+            
+            allNavItems.forEach(item => {
+                const requiredRole = item.getAttribute('data-role');
+                const itemName = item.querySelector('span')?.textContent || 'Unknown';
+                
+                // Remove hidden class first
+                item.classList.remove('hidden');
+                
+                if (requiredRole === 'all') {
+                    // Always visible
+                    console.log(`  ✓ ${itemName}: Always visible (all)`);
+                } else if (requiredRole === 'not-admin') {
+                    // Visible for guests and users, hidden for admins
+                    if (isAuthenticated && user && user.role === 'admin') {
+                        item.classList.add('hidden');
+                        console.log(`  ✗ ${itemName}: Hidden (admin detected)`);
+                    } else {
+                        console.log(`  ✓ ${itemName}: Visible (guest/user)`);
+                    }
+                } else if (requiredRole === 'user') {
+                    // Visible for registered users and admins
+                    if (isAuthenticated && user && (user.role === 'user' || user.role === 'admin')) {
+                        console.log(`  ✓ ${itemName}: Visible (user/admin)`);
+                    } else {
+                        item.classList.add('hidden');
+                        console.log(`  ✗ ${itemName}: Hidden (need user/admin)`);
+                    }
+                } else if (requiredRole === 'admin') {
+                    // Visible only for admins
+                    if (isAuthenticated && user && user.role === 'admin') {
+                        console.log(`  ✓ ${itemName}: Visible (admin only)`);
+                    } else {
+                        item.classList.add('hidden');
+                        console.log(`  ✗ ${itemName}: Hidden (need admin)`);
+                    }
+                }
+            });
+
+            // Show sidebar after auth check complete
+            if (sidebar) {
+                sidebar.classList.add('loaded');
+                console.log('🎨 Sidebar loaded and visible');
+            }
+        }
+
+        // Show login modal
+        function showLoginModal() {
+            document.getElementById('loginModal').style.display = 'block';
+        }
+
+        // Show register modal
+        function showRegisterModal() {
+            document.getElementById('registerModal').style.display = 'block';
+        }
+
+        // Close modals
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('loginMessage').innerHTML = '';
+        }
+
+        function closeRegisterModal() {
+            document.getElementById('registerModal').style.display = 'none';
+            document.getElementById('registerMessage').innerHTML = '';
+        }
+
+        // Handle login
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const messageEl = document.getElementById('loginMessage');
+            const submitBtn = document.getElementById('loginSubmit');
+
+            submitBtn.disabled = true;
+            messageEl.innerHTML = '<div class="auth-message">Logging in...</div>';
+
+            try {
+                const response = await fetch('login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    messageEl.innerHTML = '<div class="auth-message success">Login successful! Redirecting...</div>';
+                    setTimeout(() => {
+                        closeLoginModal();
+                        // Redirect admins to general page, others stay on monitor page
+                        if (data.user && data.user.role === 'admin') {
+                            window.location.href = 'general.html';
+                        } else {
+                            checkAuthStatus();
+                            location.reload();
+                        }
+                    }, 1000);
+                } else {
+                    messageEl.innerHTML = `<div class="auth-message error">${data.message || 'Login failed'}</div>`;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                messageEl.innerHTML = '<div class="auth-message error">Error connecting to server</div>';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Handle registration
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const messageEl = document.getElementById('registerMessage');
+            const submitBtn = document.getElementById('registerSubmit');
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                messageEl.innerHTML = '<div class="auth-message error">Passwords do not match</div>';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            messageEl.innerHTML = '<div class="auth-message">Creating account...</div>';
+
+            try {
+                const response = await fetch('register.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    messageEl.innerHTML = '<div class="auth-message success">Registration successful! Redirecting...</div>';
+                    setTimeout(() => {
+                        closeRegisterModal();
+                        checkAuthStatus();
+                        location.reload();
+                    }, 1000);
+                } else {
+                    messageEl.innerHTML = `<div class="auth-message error">${data.message || 'Registration failed'}</div>`;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                messageEl.innerHTML = '<div class="auth-message error">Error connecting to server</div>';
+                submitBtn.disabled = false;
+            }
+        }
+
+        // Handle logout
+        async function handleLogout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                const response = await fetch('logout.php');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out');
+            }
+        }
+
+        // Initialize auth on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthStatus();
+        });
+
+    </script>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="auth-modal">
+        <div class="auth-modal-content">
+            <div class="auth-modal-header">
+                <h2>Login</h2>
+                <span class="auth-close" onclick="closeLoginModal()">&times;</span>
+            </div>
+            <form class="auth-form" onsubmit="handleLogin(event)">
+                <div class="auth-input-group">
+                    <label>Username or Email</label>
+                    <input type="text" id="loginUsername" required>
+                </div>
+                <div class="auth-input-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <div id="loginMessage"></div>
+                <button type="submit" class="auth-button" id="loginSubmit">Login</button>
+            </form>
+            <div class="auth-switch">
+                Don't have an account? <a onclick="closeLoginModal(); showRegisterModal();">Register</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="auth-modal">
+        <div class="auth-modal-content">
+            <div class="auth-modal-header">
+                <h2>Register</h2>
+                <span class="auth-close" onclick="closeRegisterModal()">&times;</span>
+            </div>
+            <form class="auth-form" onsubmit="handleRegister(event)">
+                <div class="auth-input-group">
+                    <label>Username</label>
+                    <input type="text" id="registerUsername" required minlength="3">
+                </div>
+                <div class="auth-input-group">
+                    <label>Email</label>
+                    <input type="email" id="registerEmail" required>
+                </div>
+                <div class="auth-input-group">
+                    <label>Password</label>
+                    <input type="password" id="registerPassword" required minlength="6">
+                </div>
+                <div class="auth-input-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="registerConfirmPassword" required minlength="6">
+                </div>
+                <div id="registerMessage"></div>
+                <button type="submit" class="auth-button" id="registerSubmit">Register</button>
+            </form>
+            <div class="auth-switch">
+                Already have an account? <a onclick="closeRegisterModal(); showLoginModal();">Login</a>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

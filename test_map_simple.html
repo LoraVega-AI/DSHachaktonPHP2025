@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Map Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial; }
+        #map { height: 600px; width: 100%; border: 2px solid #333; }
+        .info { background: #f0f0f0; padding: 15px; margin-bottom: 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>Simple Map Test</h2>
+        <p>This page tests if markers can be displayed on a basic Leaflet map.</p>
+        <button onclick="testMarkers()">Test Markers</button>
+        <button onclick="loadReports()">Load Reports from API</button>
+        <div id="status"></div>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map;
+        let markers = [];
+
+        // Initialize map
+        map = L.map('map').setView([42.6629, 21.1655], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        function updateStatus(msg) {
+            document.getElementById('status').innerHTML = '<p><strong>' + msg + '</strong></p>';
+            console.log(msg);
+        }
+
+        function testMarkers() {
+            updateStatus('Testing with hardcoded coordinates...');
+            
+            // Clear existing markers
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // Test with the exact coordinates from your database
+            const testReports = [
+                { title: 'Test 1 - Kosovo', lat: 42.66727100, lng: 21.20036700, severity: 'HIGH' },
+                { title: 'Test 2 - Hong Kong', lat: 22.41687000, lng: 114.22532800, severity: 'LOW' }
+            ];
+
+            testReports.forEach((report, idx) => {
+                const marker = L.marker([report.lat, report.lng])
+                    .addTo(map)
+                    .bindPopup(`<strong>${report.title}</strong><br>Lat: ${report.lat}<br>Lng: ${report.lng}`);
+                markers.push(marker);
+                console.log(`Added test marker ${idx + 1}:`, report.title);
+            });
+
+            if (markers.length > 0) {
+                const group = L.featureGroup(markers);
+                map.fitBounds(group.getBounds().pad(0.1));
+                updateStatus(`✅ Added ${markers.length} test markers. Can you see them on the map?`);
+            }
+        }
+
+        async function loadReports() {
+            updateStatus('Loading reports from API...');
+            
+            try {
+                const response = await fetch('get_map_reports.php?limit=10');
+                const data = await response.json();
+                
+                console.log('API Response:', data);
+                
+                if (data.status === 'success' && data.reports) {
+                    updateStatus(`API returned ${data.reports.length} reports`);
+                    
+                    // Clear existing markers
+                    markers.forEach(m => map.removeLayer(m));
+                    markers = [];
+
+                    const reportsWithLocation = data.reports.filter(r => {
+                        return r.latitude != null && r.longitude != null && 
+                               r.latitude != 0 && r.longitude != 0;
+                    });
+
+                    updateStatus(`Found ${reportsWithLocation.length} reports with location`);
+
+                    reportsWithLocation.forEach((report, idx) => {
+                        const lat = parseFloat(report.latitude);
+                        const lng = parseFloat(report.longitude);
+                        
+                        console.log(`Adding marker ${idx + 1}:`, report.title, lat, lng);
+                        
+                        const marker = L.marker([lat, lng])
+                            .addTo(map)
+                            .bindPopup(`
+                                <strong>${report.title}</strong><br>
+                                ${report.description}<br>
+                                <small>${report.severity} • ${report.category}</small>
+                            `);
+                        markers.push(marker);
+                    });
+
+                    if (markers.length > 0) {
+                        const group = L.featureGroup(markers);
+                        map.fitBounds(group.getBounds().pad(0.1));
+                        updateStatus(`✅ Added ${markers.length} markers from database. Can you see them?`);
+                    } else {
+                        updateStatus('⚠️ No markers were added (no valid locations found)');
+                    }
+                } else {
+                    updateStatus('❌ API error: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                updateStatus('❌ Error: ' + error.message);
+                console.error('Error:', error);
+            }
+        }
+
+        // Auto-load reports on page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                loadReports();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
+

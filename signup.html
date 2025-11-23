@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .signup-container {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .brand h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .signup-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .signup-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .signup-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .signup-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-cyan);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: 'DM Sans', sans-serif;
+            margin-top: 10px;
+        }
+
+        .submit-button:hover {
+            background: #0891b2;
+        }
+
+        .submit-button:disabled {
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .link-section {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .link-section a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-section a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .back-link a:hover {
+            color: var(--text-primary);
+        }
+
+        .password-strength {
+            height: 4px;
+            background: var(--surface);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .password-strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .password-strength-bar.weak {
+            width: 33%;
+            background: #ef4444;
+        }
+
+        .password-strength-bar.medium {
+            width: 66%;
+            background: #f59e0b;
+        }
+
+        .password-strength-bar.strong {
+            width: 100%;
+            background: #10b981;
+        }
+
+        @media (max-width: 480px) {
+            .signup-card {
+                padding: 30px 25px;
+            }
+
+            .brand h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="signup-container">
+        <div class="brand">
+            <h1>UrbanPulse</h1>
+            <p>Advanced Acoustic Monitor</p>
+        </div>
+
+        <div class="signup-card">
+            <div class="signup-header">
+                <h2>Create Account</h2>
+                <p>Join UrbanPulse to track and manage reports</p>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <form id="signupForm" onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Choose a username" required minlength="3">
+                    <div class="form-hint">At least 3 characters</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a password" required minlength="6" oninput="checkPasswordStrength()">
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                    </div>
+                    <div class="form-hint">At least 6 characters</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="6">
+                </div>
+
+                <button type="submit" class="submit-button" id="submitBtn">Create Account</button>
+            </form>
+
+            <div class="link-section">
+                Already have an account? <a href="login.html">Sign in</a>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="index.html">← Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            const strengthBar = document.getElementById('passwordStrengthBar');
+            
+            // Remove all classes
+            strengthBar.className = 'password-strength-bar';
+            
+            if (password.length === 0) {
+                return;
+            }
+            
+            let strength = 0;
+            if (password.length >= 6) strength++;
+            if (password.length >= 10) strength++;
+            if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+            if (/\d/.test(password)) strength++;
+            if (/[^a-zA-Z0-9]/.test(password)) strength++;
+            
+            if (strength <= 2) {
+                strengthBar.classList.add('weak');
+            } else if (strength <= 3) {
+                strengthBar.classList.add('medium');
+            } else {
+                strengthBar.classList.add('strong');
+            }
+        }
+
+        async function handleSignup(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const messageContainer = document.getElementById('messageContainer');
+            const submitBtn = document.getElementById('submitBtn');
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                messageContainer.innerHTML = '<div class="message error">✗ Passwords do not match</div>';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            messageContainer.innerHTML = '<div class="message">Creating your account...</div>';
+
+            try {
+                const response = await fetch('register.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    messageContainer.innerHTML = '<div class="message success">✓ Account created! Redirecting...</div>';
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    messageContainer.innerHTML = `<div class="message error">✗ ${data.message || 'Registration failed'}</div>`;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                messageContainer.innerHTML = '<div class="message error">✗ Error connecting to server</div>';
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
+

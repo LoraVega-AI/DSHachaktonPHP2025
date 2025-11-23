@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Heatmap Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #1a1a1a; color: #fff; }
+        #map { height: 600px; width: 100%; border: 2px solid #444; margin-bottom: 20px; transition: filter 0.3s ease; }
+        #map.grayscale { filter: grayscale(100%) contrast(1.1) brightness(0.9); }
+        button { padding: 15px 30px; font-size: 16px; margin: 10px; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 8px; }
+        button:hover { background: #2563eb; }
+        button.active { background: linear-gradient(135deg, #ef4444, #f59e0b); }
+        #status { background: #2a2a2a; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        pre { background: #1a1a1a; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔥 Hot Zone Test Page</h1>
+    <p>This page tests the hot zone functionality. Map will turn grayscale, and colored circles will show report locations.</p>
+    
+    <button id="testBtn" onclick="testHotZone()">🔥 Toggle Hot Zone</button>
+    <button onclick="location.reload()">🔄 Refresh</button>
+    
+    <div id="map"></div>
+    
+    <div id="status">
+        <h3>Status:</h3>
+        <div id="statusContent">Waiting for test...</div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        let map;
+        let hotZoneCircles = [];
+        let isHotZoneActive = false;
+        
+        function log(message, type = 'info') {
+            const statusDiv = document.getElementById('statusContent');
+            const timestamp = new Date().toLocaleTimeString();
+            statusDiv.innerHTML += `<div class="${type}">[${timestamp}] ${message}</div>`;
+            console.log(`[${type}]`, message);
+        }
+        
+        // Initialize map
+        log('Initializing map...', 'info');
+        map = L.map('map').setView([42.6629, 21.1655], 13);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        log('Map initialized ✓', 'success');
+        
+        async function testHotZone() {
+            const btn = document.getElementById('testBtn');
+            const mapElement = document.getElementById('map');
+            
+            if (isHotZoneActive) {
+                // Remove hot zones
+                log('Removing hot zones...', 'info');
+                hotZoneCircles.forEach(circle => map.removeLayer(circle));
+                hotZoneCircles = [];
+                mapElement.classList.remove('grayscale');
+                btn.classList.remove('active');
+                isHotZoneActive = false;
+                log('Hot zones removed ✓', 'success');
+                return;
+            }
+            
+            // Fetch data
+            log('Fetching heatmap data...', 'info');
+            try {
+                const response = await fetch('get_heatmap_data.php');
+                log(`Response status: ${response.status}`, 'info');
+                
+                const text = await response.text();
+                log(`Response length: ${text.length} characters`, 'info');
+                
+                const data = JSON.parse(text);
+                log(`Data parsed successfully`, 'success');
+                log(`Points received: ${data.heatmap_data.length}`, 'info');
+                
+                if (data.status === 'success' && data.heatmap_data.length > 0) {
+                    log(`Sample data: <pre>${JSON.stringify(data.heatmap_data.slice(0, 3), null, 2)}</pre>`, 'info');
+                    
+                    // Make map grayscale
+                    log('Applying grayscale filter...', 'info');
+                    mapElement.classList.add('grayscale');
+                    
+                    // Create colored circles
+                    log('Creating colored hot zone circles...', 'info');
+                    data.heatmap_data.forEach(point => {
+                        const [lat, lng, intensity] = point;
+                        
+                        // Color based on severity (intensity)
+                        let color, fillColor;
+                        if (intensity >= 0.9) {
+                            color = '#dc2626'; fillColor = '#ef4444'; // CRITICAL - Red
+                        } else if (intensity >= 0.7) {
+                            color = '#ea580c'; fillColor = '#f59e0b'; // HIGH - Orange
+                        } else if (intensity >= 0.45) {
+                            color = '#d97706'; fillColor = '#fbbf24'; // MEDIUM - Yellow
+                        } else {
+                            color = '#059669'; fillColor = '#10b981'; // LOW - Green
+                        }
+                        
+                        const circle = L.circle([lat, lng], {
+                            color: color,
+                            fillColor: fillColor,
+                            fillOpacity: 1.0,
+                            opacity: 1.0,
+                            weight: 3,
+                            radius: 100 // 100 meters
+                        }).addTo(map);
+                        
+                        hotZoneCircles.push(circle);
+                    });
+                    
+                    log(`Created ${hotZoneCircles.length} hot zone circles ✓`, 'success');
+                    btn.classList.add('active');
+                    isHotZoneActive = true;
+                    
+                    // Fit bounds to data
+                    if (data.heatmap_data.length > 0) {
+                        const bounds = L.latLngBounds(data.heatmap_data.map(p => [p[0], p[1]]));
+                        map.fitBounds(bounds, { padding: [50, 50] });
+                        log('Map zoomed to data ✓', 'success');
+                    }
+                    
+                } else if (data.heatmap_data.length === 0) {
+                    log('No data points available. Database might be empty or all reports lack coordinates.', 'error');
+                    alert('No hot zone data available.\n\nPlease ensure:\n1. Database has reports\n2. Reports have valid lat/lng coordinates\n3. Coordinates are not 0,0');
+                } else {
+                    log(`Error: ${data.message}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        // Auto-test on load
+        setTimeout(() => {
+            log('Auto-testing hot zone in 2 seconds...', 'info');
+            setTimeout(testHotZone, 2000);
+        }, 100);
+    </script>
+</body>
+</html>
+

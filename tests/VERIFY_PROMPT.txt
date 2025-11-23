@@ -1,0 +1,140 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    FINAL VERIFICATION PROMPT                                 ║
+║         Make Sure Everything is REAL and NOT MOCKED                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+STEP 1: Test API Key
+───────────────────────────────────────────────────────────────────────────────
+Run: php tests/test_api_key.php
+Expected: ✅ SUCCESS: API key is valid and working!
+
+
+STEP 2: Test Real Audio Pipeline
+───────────────────────────────────────────────────────────────────────────────
+1. Open index.html in browser
+2. Click "Start Analysis"
+3. VERIFY microphone permission appears (real audio input)
+4. Make a HISSING sound → Should detect "Hissing/Sizzling"
+5. Make a GRINDING sound → Should detect "Grinding/Screeching"  
+6. Make a GURGLING sound → Should detect "Gurgling/Sloshing"
+7. Each should give DIFFERENT results (not same every time)
+
+
+STEP 3: Verify Real Analysis (Not Mocked)
+───────────────────────────────────────────────────────────────────────────────
+Open browser DevTools → Network tab:
+
+✓ Check: POST request to analyze.php happens
+✓ Check: Response shows "cisa_v4_multimodal_analysis" (NOT "fallback")
+✓ Check: Analysis has specific measurements (Hz, dB, percentages)
+✓ Check: Console shows real MFCC values (not all zeros)
+✓ Check: RMS levels change when you speak louder/quieter
+✓ Check: Status says "1 audio event detected" (consistent everywhere)
+
+
+STEP 4: Verify Infrastructure Hazard Detection Works
+───────────────────────────────────────────────────────────────────────────────
+Test these scenarios:
+
+🔴 HISSING/SIZZLING (steam leak)
+   → Should detect: "Hissing/Sizzling"
+   → Risk: Should be HIGH or CRITICAL (not always SAFE)
+   → Analysis: Should mention pressure/steam/pipe damage
+
+⚙️ GRINDING/SCREECHING (mechanical failure)
+   → Should detect: "Grinding/Screeching"
+   → Risk: Should be HIGH or CRITICAL
+   → Analysis: Should mention mechanical components/bearings
+
+💧 GURGLING/SLOSHING (water leak)
+   → Should detect: "Gurgling/Sloshing"
+   → Risk: Should be MEDIUM to HIGH
+   → Analysis: Should mention liquid/plumbing/blockages
+
+🔇 QUIET BACKGROUND (normal)
+   → Should detect: Low confidence or "SAFE"
+   → Should NOT trigger false alarms
+
+
+STEP 5: Red Flags (If you see these, it's MOCKED):
+───────────────────────────────────────────────────────────────────────────────
+❌ Same result every time regardless of sound
+❌ Analysis completes instantly (<1 second)
+❌ MFCC arrays are all zeros
+❌ No network request to analyze.php
+❌ Always shows "fallback" analysis type
+❌ Generic placeholder text in results
+❌ All confidence scores identical
+
+
+STEP 6: Final Check
+───────────────────────────────────────────────────────────────────────────────
+✓ API key working (test script passes)
+✓ Real audio captured (microphone permission)
+✓ Real acoustic features extracted (MFCC, RMS, spectral)
+✓ Real LLM analysis (not fallback, detailed results)
+✓ Consistent data (1 audio event everywhere)
+✓ Accurate hazard detection (different sounds = different results)
+✓ Infrastructure safety assessment functional
+
+✅ IF ALL PASS → System is REAL and FUNCTIONAL
+❌ IF ANY FAIL → Fix the issue before production
+
+
+STEP 7: Make Upgrades & Improvements
+───────────────────────────────────────────────────────────────────────────────
+While testing, identify areas for improvement:
+
+🔧 ACCURACY UPGRADES:
+   → Improve hazard classification accuracy
+   → Fine-tune MFCC threshold values
+   → Enhance spectral analysis sensitivity
+   → Better noise filtering algorithms
+   → More precise confidence scoring
+
+⚡ PERFORMANCE UPGRADES:
+   → Optimize audio processing speed
+   → Reduce analysis latency
+   → Improve memory usage
+   → Faster LLM response handling
+   → Better error recovery
+
+🎯 FEATURE UPGRADES:
+   → Add more hazard types
+   → Real-time continuous monitoring
+   → Historical trend analysis
+   → Alert system integration
+   → Export reports functionality
+   → Multi-sensor fusion support
+
+📊 ANALYSIS UPGRADES:
+   → Deeper LLM analysis prompts
+   → More detailed technical reports
+   → Better risk assessment algorithms
+   → Enhanced infrastructure context
+   → Improved safety recommendations
+
+🛡️ RELIABILITY UPGRADES:
+   → Better error handling
+   → Graceful fallback mechanisms
+   → Data validation improvements
+   → API retry logic
+   → Offline mode support
+
+💡 After testing, document what needs upgrading and prioritize:
+   1. Critical fixes (broken functionality)
+   2. Accuracy improvements (wrong detections)
+   3. Performance optimizations (slow processing)
+   4. Feature enhancements (new capabilities)
+   5. Polish (UI/UX improvements)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+QUICK TEST COMMANDS:
+───────────────────────────────────────────────────────────────────────────────
+Test API:     php tests/test_api_key.php
+Test Browser: Open index.html → Start Analysis → Make sounds → Check results
+
+═══════════════════════════════════════════════════════════════════════════════
+

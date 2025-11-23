@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - UrbanPulse</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-bg: #0a0e27;
+            --secondary-bg: #111633;
+            --surface: #1a1f3a;
+            --card-bg: #1e2442;
+            --text-primary: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #2d3748;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--secondary-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 32px;
+            cursor: pointer;
+        }
+
+        .user-info {
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .user-info-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--surface);
+            color: var(--accent-blue);
+        }
+
+        .main-wrapper {
+            width: calc(100% - 240px);
+            margin-left: 240px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-bar {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--secondary-bg);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .control-button {
+            padding: 12px;
+            min-width: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-button:hover {
+            background: var(--surface);
+            border-color: var(--border-color);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+        }
+
+        .settings-section {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .settings-section h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-blue-light);
+        }
+
+        .btn-danger {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        /* Prevent sidebar flicker during auth check */
+        .sidebar {
+            opacity: 0;
+            transition: opacity 0.2s ease-in;
+        }
+
+        .sidebar.loaded {
+            opacity: 1;
+        }
+
+        .nav-item.hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            
+            <div id="authSection">
+                <div id="guestAuth" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button class="control-button" onclick="window.location.href='login.html'">Login</button>
+                    <button class="control-button" onclick="window.location.href='signup.html'">Register</button>
+                </div>
+                <div id="userAuth" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-info-name" id="userName">User</div>
+                        <div class="user-info-role" id="userRole">Guest</div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item" data-role="not-admin">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="map.html" class="nav-item" data-role="all">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
+                    <div class="nav-icon">G</div>
+                    <span>General</span>
+                </a>
+                <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="rankings.html" class="nav-item" id="navRankings" data-role="user">
+                    <div class="nav-icon">R</div>
+                    <span>Rankings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <div class="search-bar">
+                <div class="control-buttons">
+                    <button class="control-button" onclick="window.location.href='settings.html'" title="Settings">
+                        <span style="font-size: 18px;">⚙️</span>
+                    </button>
+                    <button class="control-button" onclick="window.location.href='profile.html'" title="Profile">
+                        <span style="font-size: 18px;">👤</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div class="container">
+                    <div class="header">
+                        <h1>⚙️ Settings</h1>
+                        <p>Manage your account preferences and settings</p>
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>Account Settings</h2>
+                        <div class="form-group">
+                            <label class="form-label">Email Notifications</label>
+                            <input type="checkbox" id="emailNotifications" checked>
+                            <span style="margin-left: 8px; color: var(--text-muted);">Receive email notifications for report updates</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Report Alerts</label>
+                            <input type="checkbox" id="reportAlerts" checked>
+                            <span style="margin-left: 8px; color: var(--text-muted);">Get alerts when your reports are updated</span>
+                        </div>
+                        <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>Privacy</h2>
+                        <div class="form-group">
+                            <label class="form-label">Show Profile</label>
+                            <input type="checkbox" id="showProfile" checked>
+                            <span style="margin-left: 8px; color: var(--text-muted);">Allow others to see your profile</span>
+                        </div>
+                        <button class="btn-primary" onclick="savePrivacySettings()">Save Privacy Settings</button>
+                    </div>
+
+                    <div class="settings-section">
+                        <h2>Danger Zone</h2>
+                        <p style="color: var(--text-muted); margin-bottom: 16px;">Permanently delete your account and all associated data.</p>
+                        <button class="btn-danger" onclick="deleteAccount()">Delete Account</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRole = 'guest';
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php', {
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    currentUser = data.user;
+                    currentRole = data.user.role;
+                    updateUIForAuth(true, data.user);
+                    return true;
+                } else {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                return false;
+            }
+        }
+
+        function updateUIForAuth(isAuthenticated, user) {
+            const guestAuth = document.getElementById('guestAuth');
+            const userAuth = document.getElementById('userAuth');
+            const sidebar = document.getElementById('mainSidebar');
+
+            if (isAuthenticated && user) {
+                guestAuth.style.display = 'none';
+                userAuth.style.display = 'block';
+                document.getElementById('userName').textContent = user.username;
+                document.getElementById('userRole').textContent = user.role;
+            } else {
+                guestAuth.style.display = 'flex';
+                userAuth.style.display = 'none';
+            }
+
+            const allNavItems = document.querySelectorAll('.nav-item[data-role]');
+            allNavItems.forEach(item => {
+                const requiredRole = item.getAttribute('data-role');
+                item.classList.remove('hidden');
+                
+                if (requiredRole === 'all') {
+                    // Always visible
+                } else if (requiredRole === 'not-admin') {
+                    if (isAuthenticated && user && user.role === 'admin') {
+                        item.classList.add('hidden');
+                    }
+                } else if (requiredRole === 'user') {
+                    if (!isAuthenticated || !user || (user.role !== 'user' && user.role !== 'admin')) {
+                        item.classList.add('hidden');
+                    }
+                } else if (requiredRole === 'admin') {
+                    if (!isAuthenticated || !user || user.role !== 'admin') {
+                        item.classList.add('hidden');
+                    }
+                }
+            });
+
+            if (sidebar) {
+                sidebar.classList.add('loaded');
+            }
+        }
+
+        function saveSettings() {
+            alert('Settings saved successfully!');
+        }
+
+        function savePrivacySettings() {
+            alert('Privacy settings saved successfully!');
+        }
+
+        function deleteAccount() {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                if (confirm('This will permanently delete all your data. Are you absolutely sure?')) {
+                    alert('Account deletion functionality will be implemented soon.');
+                }
+            }
+        }
+
+        window.addEventListener('load', () => {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>
+

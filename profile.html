@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - UrbanPulse</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-bg: #0a0e27;
+            --secondary-bg: #111633;
+            --surface: #1a1f3a;
+            --card-bg: #1e2442;
+            --text-primary: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #2d3748;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--secondary-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 32px;
+            cursor: pointer;
+        }
+
+        .user-info {
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .user-info-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--surface);
+            color: var(--accent-blue);
+        }
+
+        .main-wrapper {
+            width: calc(100% - 240px);
+            margin-left: 240px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .search-bar {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--secondary-bg);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .control-button {
+            padding: 12px;
+            min-width: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-button:hover {
+            background: var(--surface);
+            border-color: var(--border-color);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+        }
+
+        .profile-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: white;
+        }
+
+        .profile-info h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .profile-info .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .profile-info .role-badge.admin {
+            background: var(--accent-red);
+        }
+
+        .profile-info .role-badge.user {
+            background: var(--accent-green);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-blue-light);
+        }
+
+        .btn-danger {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .nav-item.hidden {
+            display: none !important;
+        }
+
+        .sidebar {
+            opacity: 0;
+            transition: opacity 0.2s ease-in;
+        }
+
+        .sidebar.loaded {
+            opacity: 1;
+        }
+
+        .reports-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .report-item {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .report-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .report-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .report-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .severity-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-critical { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .severity-high { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .severity-medium { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .severity-low { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-solved { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .status-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            
+            <div id="authSection">
+                <div id="guestAuth" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button class="control-button" onclick="window.location.href='login.html'">Login</button>
+                    <button class="control-button" onclick="window.location.href='signup.html'">Register</button>
+                </div>
+                <div id="userAuth" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-info-name" id="userName">User</div>
+                        <div class="user-info-role" id="userRole">Guest</div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item" data-role="not-admin">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="map.html" class="nav-item" data-role="all">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
+                    <div class="nav-icon">G</div>
+                    <span>General</span>
+                </a>
+                <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="rankings.html" class="nav-item" id="navRankings" data-role="user">
+                    <div class="nav-icon">R</div>
+                    <span>Rankings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <div class="search-bar">
+                <div class="control-buttons">
+                    <button class="control-button" onclick="window.location.href='settings.html'" title="Settings">
+                        <span style="font-size: 18px;">⚙️</span>
+                    </button>
+                    <button class="control-button" onclick="window.location.href='profile.html'" title="Profile">
+                        <span style="font-size: 18px;">👤</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div class="container">
+                    <div class="header">
+                        <h1>👤 Profile</h1>
+                        <p>View and manage your profile information</p>
+                    </div>
+
+                    <div class="profile-card" id="profileCard">
+                        <div class="profile-header">
+                            <div class="profile-avatar" id="profileAvatar">👤</div>
+                            <div class="profile-info">
+                                <h2 id="profileName">Loading...</h2>
+                                <span class="role-badge" id="roleBadge">Guest</span>
+                            </div>
+                        </div>
+
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value" id="totalReports">-</div>
+                                <div class="stat-label">Total Reports</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="solvedReports">-</div>
+                                <div class="stat-label">Solved Reports</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value" id="pendingReports">-</div>
+                                <div class="stat-label">Pending Reports</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 32px;">
+                            <h3 style="margin-bottom: 16px;">Account Information</h3>
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-input" id="usernameInput" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-input" id="emailInput" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Member Since</label>
+                                <input type="text" class="form-input" id="createdAtInput" readonly>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                            <button class="btn-danger" onclick="handleLogout()" style="width: 100%;">
+                                🚪 Log Out
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- User Reports Section -->
+                    <div class="profile-card" style="margin-top: 24px;">
+                        <h3 style="font-size: 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                            <span>📋</span>
+                            <span>My Reports</span>
+                        </h3>
+                        <div id="userReportsContainer" class="loading">Loading your reports...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRole = 'guest';
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php', {
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    currentUser = data.user;
+                    currentRole = data.user.role;
+                    updateUIForAuth(true, data.user);
+                    loadProfileData(data.user);
+                    return true;
+                } else {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                    alert('Please log in to view your profile.');
+                    window.location.href = 'login.html';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                return false;
+            }
+        }
+
+        async function loadProfileData(user) {
+            document.getElementById('profileName').textContent = user.username;
+            document.getElementById('usernameInput').value = user.username;
+            document.getElementById('emailInput').value = user.email || 'N/A';
+            document.getElementById('createdAtInput').value = user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A';
+            
+            const roleBadge = document.getElementById('roleBadge');
+            roleBadge.textContent = user.role;
+            roleBadge.className = 'role-badge ' + user.role;
+            
+            const avatar = document.getElementById('profileAvatar');
+            avatar.textContent = user.username.charAt(0).toUpperCase();
+            
+            // Load user statistics
+            try {
+                const response = await fetch('get_user_stats.php', {
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                if (response.ok) {
+                    const stats = await response.json();
+                    if (stats.status === 'success') {
+                        document.getElementById('totalReports').textContent = stats.total_reports || 0;
+                        document.getElementById('solvedReports').textContent = stats.solved_reports || 0;
+                        document.getElementById('pendingReports').textContent = stats.pending_reports || 0;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('totalReports').textContent = '0';
+                document.getElementById('solvedReports').textContent = '0';
+                document.getElementById('pendingReports').textContent = '0';
+            }
+
+            // Load user reports
+            loadUserReports();
+        }
+
+        async function loadUserReports() {
+            try {
+                const response = await fetch('get_user_details.php', {
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMessage = 'Failed to load reports';
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = `HTTP ${response.status}: ${errorText.substring(0, 100)}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    displayUserReports(data.reports || []);
+                } else {
+                    throw new Error(data.message || 'Failed to load reports');
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                document.getElementById('userReportsContainer').innerHTML = `
+                    <div style="color: var(--accent-red); text-align: center; padding: 20px; background: rgba(239, 68, 68, 0.1); border-radius: 8px; border: 1px solid var(--accent-red);">
+                        <strong>Error loading reports:</strong><br>
+                        ${escapeHtml(error.message)}<br>
+                        <small style="color: var(--text-muted); margin-top: 8px; display: block;">
+                            Please check the browser console for more details.
+                        </small>
+                    </div>
+                `;
+            }
+        }
+
+        function displayUserReports(reports) {
+            const container = document.getElementById('userReportsContainer');
+            
+            if (!reports || reports.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">You haven\'t submitted any reports yet</div>';
+                return;
+            }
+            
+            let html = '<div class="reports-grid">';
+            
+            reports.forEach(report => {
+                const severityClass = `severity-${report.severity.toLowerCase()}`;
+                const statusClass = report.status === 'SOLVED' ? 'status-solved' : 'status-pending';
+                const reportLink = report.report_type === 'analysis' 
+                    ? `history.html?report=${report.id}&type=analysis` 
+                    : `history.html?report=${report.id}&type=general`;
+                
+                html += `
+                    <div class="report-item" onclick="window.location.href='${reportLink}'">
+                        <div class="report-header">
+                            <div>
+                                <div class="report-title">${escapeHtml(report.title)}</div>
+                                <div class="report-meta">
+                                    <span class="severity-badge ${severityClass}">${report.severity}</span>
+                                    <span>${report.category}</span>
+                                    <span>•</span>
+                                    <span>${new Date(report.created_at).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                            <span class="status-badge ${statusClass}">${report.status}</span>
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">
+                            ${escapeHtml(report.description.substring(0, 150))}${report.description.length > 150 ? '...' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function updateUIForAuth(isAuthenticated, user) {
+            const guestAuth = document.getElementById('guestAuth');
+            const userAuth = document.getElementById('userAuth');
+            const sidebar = document.getElementById('mainSidebar');
+
+            if (isAuthenticated && user) {
+                guestAuth.style.display = 'none';
+                userAuth.style.display = 'block';
+                document.getElementById('userName').textContent = user.username;
+                document.getElementById('userRole').textContent = user.role;
+            } else {
+                guestAuth.style.display = 'flex';
+                userAuth.style.display = 'none';
+            }
+
+            const allNavItems = document.querySelectorAll('.nav-item[data-role]');
+            allNavItems.forEach(item => {
+                const requiredRole = item.getAttribute('data-role');
+                item.classList.remove('hidden');
+                
+                if (requiredRole === 'all') {
+                    // Always visible
+                } else if (requiredRole === 'not-admin') {
+                    if (isAuthenticated && user && user.role === 'admin') {
+                        item.classList.add('hidden');
+                    }
+                } else if (requiredRole === 'user') {
+                    if (!isAuthenticated || !user || (user.role !== 'user' && user.role !== 'admin')) {
+                        item.classList.add('hidden');
+                    }
+                } else if (requiredRole === 'admin') {
+                    if (!isAuthenticated || !user || user.role !== 'admin') {
+                        item.classList.add('hidden');
+                    }
+                }
+            });
+
+            if (sidebar) {
+                sidebar.classList.add('loaded');
+            }
+        }
+
+        async function handleLogout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                const response = await fetch('logout.php', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                    window.location.href = 'index.html';
+                } else {
+                    alert('Error logging out: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>
+

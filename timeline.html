@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Timeline - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1a2332;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #fbbf24;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --border-light: #475569;
+            --sidebar-bg: #0f1419;
+            --active-bg: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-blue-light);
+            margin-bottom: 40px;
+            cursor: pointer;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .nav-item:hover {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        .nav-item.active {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        .nav-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .main-wrapper {
+            margin-left: 250px;
+            flex: 1;
+            padding: 40px;
+        }
+
+        .page-header {
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        .back-button:hover {
+            background: var(--surface);
+            border-color: var(--accent-blue);
+        }
+
+        .timeline-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .report-info {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .report-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .report-meta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .workflow-diagram {
+            position: relative;
+            padding: 40px 20px;
+        }
+
+        .workflow-node {
+            position: relative;
+            margin-bottom: 40px;
+        }
+
+        .node-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .node-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .node-icon.pending {
+            background: linear-gradient(135deg, var(--accent-yellow), var(--accent-orange));
+        }
+
+        .node-icon.solved {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+        }
+
+        .node-icon.verified {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+        }
+
+        .node-icon.not-fixed {
+            background: linear-gradient(135deg, var(--accent-red), var(--accent-orange));
+        }
+
+        .node-info {
+            flex: 1;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .node-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .node-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .node-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .node-connector {
+            position: absolute;
+            left: 30px;
+            top: 60px;
+            width: 2px;
+            height: 40px;
+            background: var(--border-color);
+            z-index: 1;
+        }
+
+        .node-connector.active {
+            background: linear-gradient(180deg, var(--accent-blue), var(--accent-cyan));
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+
+        .verification-photo {
+            margin-top: 12px;
+            max-width: 300px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .verification-photo img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .error-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--accent-red);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="history.html" class="nav-item">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="map.html" class="nav-item">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="timeline.html" class="nav-item active">
+                    <div class="nav-icon">T</div>
+                    <span>Timeline</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <div class="page-header">
+                <a href="history.html" class="back-button">← Back to History</a>
+                <h1 class="page-title">Report Timeline</h1>
+            </div>
+
+            <div class="timeline-container" id="timelineContainer">
+                <div class="loading-state">
+                    <div>Loading timeline...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get report ID and type from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const reportId = urlParams.get('id');
+        const reportType = urlParams.get('type') || 'analysis';
+
+        async function loadTimeline() {
+            if (!reportId) {
+                document.getElementById('timelineContainer').innerHTML = `
+                    <div class="error-state">
+                        <h2>No Report ID Provided</h2>
+                        <p>Please select a report from the history page to view its timeline.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                // Fetch report details
+                const response = await fetch(`get_report_timeline.php?id=${reportId}&type=${reportType}`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.report) {
+                    renderTimeline(data.report);
+                } else {
+                    document.getElementById('timelineContainer').innerHTML = `
+                        <div class="error-state">
+                            <h2>Report Not Found</h2>
+                            <p>${data.message || 'The requested report could not be found.'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading timeline:', error);
+                document.getElementById('timelineContainer').innerHTML = `
+                    <div class="error-state">
+                        <h2>Error Loading Timeline</h2>
+                        <p>Failed to load report timeline. Please try again.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderTimeline(report) {
+            const status = report.status || 'pending';
+            const timeline = [];
+
+            // Step 1: Pending (always present)
+            timeline.push({
+                icon: '⏳',
+                title: 'Report Created',
+                description: 'Report was submitted and is pending review',
+                status: 'pending',
+                timestamp: report.created_at || report.timestamp,
+                active: true
+            });
+
+            // Step 2: Solved (if status is solved or verified)
+            if (status === 'solved' || status === 'verified') {
+                timeline.push({
+                    icon: '✅',
+                    title: 'Marked as Solved',
+                    description: 'Admin marked this report as solved',
+                    status: 'solved',
+                    timestamp: report.updated_at || report.created_at,
+                    active: status === 'solved' || status === 'verified'
+                });
+            }
+
+            // Step 3: Verification (if status is verified)
+            if (status === 'verified') {
+                timeline.push({
+                    icon: '🔍',
+                    title: 'Verified',
+                    description: report.verified_by ? `Verified by ${report.verified_by}` : 'Issue was verified as fixed',
+                    status: 'verified',
+                    timestamp: report.verified_at || report.updated_at,
+                    active: true,
+                    photo: report.verification_photo
+                });
+            } else if (status === 'solved') {
+                // Show verification pending
+                timeline.push({
+                    icon: '⏳',
+                    title: 'Verification Pending',
+                    description: 'Waiting for on-site verification with photo',
+                    status: 'pending',
+                    timestamp: null,
+                    active: false
+                });
+            }
+
+            // Build HTML
+            let html = `
+                <div class="report-info">
+                    <div class="report-title">${escapeHtml(report.hazard || report.title || 'Unknown Report')}</div>
+                    <div class="report-meta">
+                        <span>Report ID: ${report.id}</span>
+                        <span>•</span>
+                        <span>Type: ${report.report_type || 'analysis'}</span>
+                        <span>•</span>
+                        <span>Severity: ${report.severity || 'UNKNOWN'}</span>
+                        <span>•</span>
+                        <span>Current Status: <strong>${status.toUpperCase()}</strong></span>
+                    </div>
+                </div>
+                <div class="workflow-diagram">
+            `;
+
+            timeline.forEach((node, index) => {
+                const isLast = index === timeline.length - 1;
+                html += `
+                    <div class="workflow-node">
+                        ${!isLast ? `<div class="node-connector ${node.active ? 'active' : ''}"></div>` : ''}
+                        <div class="node-content">
+                            <div class="node-icon ${node.status}">
+                                ${node.icon}
+                            </div>
+                            <div class="node-info">
+                                <div class="node-title">${node.title}</div>
+                                <div class="node-description">${node.description}</div>
+                                <div class="node-meta">
+                                    ${node.timestamp ? `<span>📅 ${formatDate(node.timestamp)}</span>` : ''}
+                                    ${node.status === 'verified' && node.photo ? `
+                                        <div class="verification-photo">
+                                            <img src="${escapeHtml(node.photo)}" alt="Verification photo">
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            document.getElementById('timelineContainer').innerHTML = html;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load timeline on page load
+        loadTimeline();
+    </script>
+</body>
+</html>
+

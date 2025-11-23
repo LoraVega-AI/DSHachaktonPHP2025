@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #555;
+            margin-top: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 5px;
+        }
+        .success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        .info {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+        }
+        .status {
+            font-weight: bold;
+        }
+        .details {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .summary {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #2196F3;
+        }
+        .test-category {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            border-left: 4px solid #6c757d;
+        }
+        #progress {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .page-link {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 15px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .page-link:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 Frontend Integration Test Suite</h1>
+        <p>Testing all frontend pages to ensure they load data from database correctly.</p>
+        
+        <div id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill">0%</div>
+            </div>
+        </div>
+        
+        <div id="results"></div>
+        
+        <div id="summary"></div>
+        
+        <h2>📄 Pages to Test</h2>
+        <div class="test-result info">
+            <p><strong>Quick Links to Test Pages:</strong></p>
+            <a href="../general.html" class="page-link" target="_blank">Dashboard (General)</a>
+            <a href="../map.html" class="page-link" target="_blank">Map</a>
+            <a href="../history.html" class="page-link" target="_blank">History</a>
+            <a href="../rankings.html" class="page-link" target="_blank">Rankings</a>
+            <a href="../profile.html" class="page-link" target="_blank">Profile</a>
+            <a href="../user_details.html" class="page-link" target="_blank">User Details</a>
+            <a href="../index.html" class="page-link" target="_blank">Home (Index)</a>
+        </div>
+    </div>
+    
+    <script>
+        const results = {
+            total: 0,
+            passed: 0,
+            failed: 0,
+            warnings: 0,
+            tests: []
+        };
+        
+        function updateProgress() {
+            const percent = results.total > 0 ? Math.round(((results.passed + results.warnings) / results.total) * 100) : 0;
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressFill').textContent = percent + '%';
+        }
+        
+        function addTest(name, status, message, details = null) {
+            results.total++;
+            if (status === 'success') results.passed++;
+            else if (status === 'error') results.failed++;
+            else if (status === 'warning') results.warnings++;
+            
+            const resultsDiv = document.getElementById('results');
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-result ' + status;
+            
+            let icon = status === 'success' ? '✅' : status === 'warning' ? '⚠️' : '❌';
+            let statusText = status === 'success' ? 'PASS' : status === 'warning' ? 'WARNING' : 'FAIL';
+            
+            testDiv.innerHTML = `
+                <div class="status">${icon} ${statusText}: ${name}</div>
+                ${message ? `<div class="details">${message}</div>` : ''}
+                ${details ? `<details><summary>Details</summary><pre>${JSON.stringify(details, null, 2)}</pre></details>` : ''}
+            `;
+            
+            resultsDiv.appendChild(testDiv);
+            updateProgress();
+        }
+        
+        function showSummary() {
+            const summaryDiv = document.getElementById('summary');
+            const successRate = results.total > 0 ? Math.round((results.passed / results.total) * 100) : 0;
+            
+            summaryDiv.innerHTML = `
+                <h2>📊 Test Summary</h2>
+                <div class="summary">
+                    <div><strong>Total Tests:</strong> ${results.total}</div>
+                    <div style="color: #28a745;"><strong>Passed:</strong> ${results.passed}</div>
+                    <div style="color: #dc3545;"><strong>Failed:</strong> ${results.failed}</div>
+                    <div style="color: #ffc107;"><strong>Warnings:</strong> ${results.warnings}</div>
+                    <div style="margin-top: 10px;"><strong>Success Rate:</strong> ${successRate}%</div>
+                    <div style="margin-top: 10px;"><strong>Overall Status:</strong> 
+                        ${results.failed === 0 
+                            ? '<span style="color: #28a745; font-weight: bold;">✅ ALL TESTS PASSED</span>' 
+                            : '<span style="color: #dc3545; font-weight: bold;">❌ SOME TESTS FAILED</span>'}
+                    </div>
+                </div>
+                
+                <h2>💡 Recommendations</h2>
+                <div class="test-result info">
+                    <ul>
+                        ${results.failed > 0 ? '<li>Fix failed endpoints before testing frontend pages</li>' : ''}
+                        ${results.warnings > 0 ? '<li>Address warnings to ensure optimal performance</li>' : ''}
+                        <li>Test each page with different user roles (guest, user, admin)</li>
+                        <li>Verify all features work: filters, sorting, pagination, search</li>
+                        <li>Check browser console for JavaScript errors</li>
+                        <li>Test with actual data - create test reports if database is empty</li>
+                    </ul>
+                </div>
+            `;
+        }
+        
+        async function testEndpoint(name, url, expectedStatus = 200) {
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.status === expectedStatus && data.status === 'success') {
+                    addTest(name, 'success', `Endpoint responds correctly (${response.status})`, {status: data.status, dataSize: JSON.stringify(data).length});
+                } else if (response.status === 403) {
+                    addTest(name, 'warning', 'Access forbidden (requires login or admin role)', {status: response.status});
+                } else if (data.status === 'error') {
+                    addTest(name, 'error', `Endpoint error: ${data.message || 'Unknown error'}`, data);
+                } else {
+                    addTest(name, 'warning', `Unexpected response (HTTP ${response.status})`, data);
+                }
+            } catch (error) {
+                addTest(name, 'error', `Request failed: ${error.message}`, {error: error.toString()});
+            }
+        }
+        
+        async function runTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h2>Running Tests...</h2>';
+            
+            // Dashboard Tests
+            resultsDiv.innerHTML += '<h2>1. Dashboard (general.html) API Tests</h2><div class="test-category" id="cat1"></div>';
+            await testEndpoint('Get Admin Analytics', '../get_admin_analytics.php');
+            await testEndpoint('Get All Users', '../get_all_users.php');
+            
+            // Map Page Tests
+            resultsDiv.innerHTML += '<h2>2. Map Page (map.html) API Tests</h2><div class="test-category" id="cat2"></div>';
+            await testEndpoint('Get Map Reports', '../get_map_reports.php');
+            await testEndpoint('Get Heatmap Data', '../get_heatmap_data.php');
+            
+            // History Page Tests
+            resultsDiv.innerHTML += '<h2>3. History Page (history.html) API Tests</h2><div class="test-category" id="cat3"></div>';
+            await testEndpoint('Get Detection History', '../get_detection_history.php');
+            
+            // Rankings Page Tests
+            resultsDiv.innerHTML += '<h2>4. Rankings Page (rankings.html) API Tests</h2><div class="test-category" id="cat4"></div>';
+            await testEndpoint('Get Rankings', '../rankings.php');
+            
+            // Profile Page Tests
+            resultsDiv.innerHTML += '<h2>5. Profile Page (profile.html) API Tests</h2><div class="test-category" id="cat5"></div>';
+            await testEndpoint('Get User Stats', '../get_user_stats.php');
+            
+            // User Details Page Tests
+            resultsDiv.innerHTML += '<h2>6. User Details Page (user_details.html) API Tests</h2><div class="test-category" id="cat6"></div>';
+            await testEndpoint('Get User Details', '../get_user_details.php?user_id=1');
+            
+            // Authentication Tests
+            resultsDiv.innerHTML += '<h2>7. Authentication API Tests</h2><div class="test-category" id="cat7"></div>';
+            await testEndpoint('Check Auth Status', '../check_auth.php');
+            
+            showSummary();
+        }
+        
+        // Run tests on page load
+        runTests();
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Details - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1a2332;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 240px;
+            background: var(--secondary-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 48px;
+            cursor: pointer;
+        }
+
+        .main-wrapper {
+            flex: 1;
+            margin-left: 240px;
+            width: calc(100% - 240px);
+        }
+
+        .search-bar {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--secondary-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-button {
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            background: var(--surface);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+        }
+
+        .profile-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: white;
+            font-weight: 700;
+            object-fit: cover;
+        }
+
+        .profile-info h2 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-right: 8px;
+        }
+
+        .badge-admin { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .badge-user { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .badge-guest { background: rgba(148, 163, 184, 0.2); color: var(--text-muted); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-value.blue { color: var(--accent-blue); }
+        .stat-value.green { color: var(--accent-green); }
+        .stat-value.orange { color: var(--accent-orange); }
+        .stat-value.red { color: var(--accent-red); }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--card-bg);
+        }
+
+        .reports-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .report-item {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .report-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .report-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .report-meta {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .severity-badge {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-critical { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .severity-high { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .severity-medium { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .severity-low { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .error-message {
+            padding: 20px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            color: var(--accent-red);
+            margin-bottom: 20px;
+        }
+
+        .edit-mode {
+            border: 2px solid var(--accent-blue);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+        </aside>
+
+        <div class="main-wrapper">
+            <div class="search-bar">
+                <button class="back-button" onclick="window.location.href='general.html'">
+                    ← Back to General
+                </button>
+            </div>
+
+            <div class="container">
+                <div class="header">
+                    <h1 id="pageTitle">👤 User Details</h1>
+                    <p id="pageDescription">View and manage user information</p>
+                </div>
+
+                <div id="errorContainer"></div>
+
+                <!-- Profile Card -->
+                <div class="profile-card" id="profileCard" style="display: none;">
+                    <div class="profile-header">
+                        <img id="profileAvatar" class="profile-avatar" alt="Profile" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div id="profileAvatarFallback" class="profile-avatar" style="display: none;">U</div>
+                        <div class="profile-info">
+                            <h2 id="profileName">Loading...</h2>
+                            <div>
+                                <span class="badge" id="roleBadge">Loading...</span>
+                                <span style="color: var(--text-muted); font-size: 14px;" id="userEmail">loading@example.com</span>
+                            </div>
+                            <div style="margin-top: 8px; color: var(--text-muted); font-size: 14px;">
+                                Member since <span id="memberSince">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value blue" id="totalReports">-</div>
+                            <div class="stat-label">Total Reports</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value green" id="solvedReports">-</div>
+                            <div class="stat-label">Solved</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value orange" id="pendingReports">-</div>
+                            <div class="stat-label">Pending</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value red" id="criticalReports">-</div>
+                            <div class="stat-label">Critical</div>
+                        </div>
+                    </div>
+
+                    <!-- Edit Form (shown in edit mode) -->
+                    <div id="editForm" style="display: none;">
+                        <div style="padding-top: 24px; border-top: 1px solid var(--border-color);">
+                            <h3 style="font-size: 18px; margin-bottom: 16px;">Edit User Information</h3>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-input" id="editUsername">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-input" id="editEmail">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label">Role</label>
+                                <select class="form-select" id="editRole">
+                                    <option value="guest">Guest</option>
+                                    <option value="user">User</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            
+                            <div class="button-group">
+                                <button class="btn-primary" onclick="saveUserChanges()">Save Changes</button>
+                                <button class="btn-secondary" onclick="cancelEdit()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Reports Section -->
+                <div class="section-card" id="reportsSection" style="display: none;">
+                    <div class="section-title">
+                        <span>📋</span>
+                        <span>User Reports</span>
+                    </div>
+                    <div id="reportsContainer" class="loading">Loading reports...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let userData = null;
+        let editMode = false;
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php', {
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                const data = await response.json();
+                
+                if (data.authenticated && data.user && data.user.role === 'admin') {
+                    currentUser = data.user;
+                    return true;
+                } else {
+                    showError('Admin access required');
+                    setTimeout(() => {
+                        window.location.href = 'general.html';
+                    }, 2000);
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                showError('Authentication error');
+                return false;
+            }
+        }
+
+        async function loadUserDetails() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user_id');
+            const mode = urlParams.get('mode');
+            
+            if (!userId) {
+                showError('User ID is required');
+                return;
+            }
+
+            editMode = (mode === 'edit');
+
+            try {
+                const response = await fetch(`get_user_details.php?user_id=${userId}`, {
+                    credentials: 'include',
+                    cache: 'no-cache'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load user details');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    userData = data;
+                    displayUserDetails(data);
+                } else {
+                    throw new Error(data.message || 'Failed to load user details');
+                }
+            } catch (error) {
+                console.error('Error loading user details:', error);
+                showError('Error loading user details: ' + error.message);
+            }
+        }
+
+        function displayUserDetails(data) {
+            const user = data.user;
+            const stats = data.statistics;
+            const reports = data.reports;
+
+            // Update page title
+            document.getElementById('pageTitle').textContent = `👤 ${user.username}'s Profile`;
+            
+            // Update profile info
+            document.getElementById('profileName').textContent = user.username;
+            document.getElementById('userEmail').textContent = user.email;
+            
+            const roleClass = user.role === 'admin' ? 'badge-admin' : user.role === 'user' ? 'badge-user' : 'badge-guest';
+            const roleBadge = document.getElementById('roleBadge');
+            roleBadge.textContent = user.role;
+            roleBadge.className = 'badge ' + roleClass;
+            
+            // Set avatar
+            if (user.profile_img) {
+                document.getElementById('profileAvatar').src = user.profile_img;
+                document.getElementById('profileAvatar').style.display = 'block';
+                document.getElementById('profileAvatarFallback').style.display = 'none';
+            } else {
+                document.getElementById('profileAvatar').style.display = 'none';
+                document.getElementById('profileAvatarFallback').textContent = user.username.charAt(0).toUpperCase();
+                document.getElementById('profileAvatarFallback').style.display = 'flex';
+            }
+            
+            // Set member since
+            const memberDate = new Date(user.created_at);
+            document.getElementById('memberSince').textContent = memberDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            // Update statistics
+            document.getElementById('totalReports').textContent = stats.total_reports;
+            document.getElementById('solvedReports').textContent = stats.solved_reports;
+            document.getElementById('pendingReports').textContent = stats.pending_reports;
+            document.getElementById('criticalReports').textContent = stats.critical_reports;
+            
+            // Show/hide edit form
+            if (editMode) {
+                document.getElementById('editForm').style.display = 'block';
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editRole').value = user.role;
+            }
+            
+            // Display reports
+            displayReports(reports);
+            
+            // Show cards
+            document.getElementById('profileCard').style.display = 'block';
+            document.getElementById('reportsSection').style.display = 'block';
+        }
+
+        function displayReports(reports) {
+            const container = document.getElementById('reportsContainer');
+            
+            if (!reports || reports.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px;">No reports found for this user</div>';
+                return;
+            }
+            
+            let html = '<div class="reports-grid">';
+            
+            reports.forEach(report => {
+                const severityClass = `severity-${report.severity.toLowerCase()}`;
+                const reportLink = report.report_type === 'analysis' 
+                    ? `history.html?report=${report.id}&type=analysis` 
+                    : `history.html?report=${report.id}&type=general`;
+                
+                html += `
+                    <div class="report-item" onclick="window.location.href='${reportLink}'">
+                        <div class="report-header">
+                            <div>
+                                <div class="report-title">${escapeHtml(report.title)}</div>
+                                <div class="report-meta">
+                                    <span class="severity-badge ${severityClass}">${report.severity}</span>
+                                    <span>${report.category}</span>
+                                    <span>•</span>
+                                    <span>${new Date(report.created_at).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                            <span class="badge badge-${report.status === 'SOLVED' ? 'user' : 'guest'}">${report.status}</span>
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">
+                            ${escapeHtml(report.description.substring(0, 150))}${report.description.length > 150 ? '...' : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function saveUserChanges() {
+            const userId = new URLSearchParams(window.location.search).get('user_id');
+            
+            const updates = {
+                user_id: parseInt(userId),
+                username: document.getElementById('editUsername').value,
+                email: document.getElementById('editEmail').value,
+                role: document.getElementById('editRole').value
+            };
+            
+            try {
+                const response = await fetch('update_user.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(updates)
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('User updated successfully!');
+                    window.location.href = `user_details.html?user_id=${userId}`;
+                } else {
+                    throw new Error(data.message || 'Failed to update user');
+                }
+            } catch (error) {
+                console.error('Error updating user:', error);
+                alert('Error updating user: ' + error.message);
+            }
+        }
+
+        function cancelEdit() {
+            const userId = new URLSearchParams(window.location.search).get('user_id');
+            window.location.href = `user_details.html?user_id=${userId}`;
+        }
+
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.innerHTML = `<div class="error-message">${escapeHtml(message)}</div>`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        window.addEventListener('load', async () => {
+            const isAdmin = await checkAuthStatus();
+            if (isAdmin) {
+                await loadUserDetails();
+            }
+        });
+    </script>
+</body>
+</html>
+

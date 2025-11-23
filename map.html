@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Map - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1a2332;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #fbbf24;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --border-light: #475569;
+            --sidebar-bg: #0f1419;
+            --active-bg: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+            overflow: hidden;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            background: var(--primary-bg);
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 48px;
+            letter-spacing: -0.5px;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        /* Prevent sidebar flicker during auth check */
+        .sidebar {
+            opacity: 0;
+            transition: opacity 0.2s ease-in;
+        }
+
+        .sidebar.loaded {
+            opacity: 1;
+        }
+
+        .nav-item.hidden {
+            display: none !important;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: inherit;
+        }
+
+        /* Main Content Area */
+        .main-wrapper {
+            flex: 1;
+            margin-left: 240px;
+            display: flex;
+            flex-direction: column;
+            width: calc(100% - 240px);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Search Bar / Top Nav */
+        .search-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 32px;
+            background: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .map-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .map-filter {
+            padding: 10px 16px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .map-filter:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .map-filter option {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-button {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 18px;
+        }
+
+        .control-button:hover {
+            background: var(--surface);
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .control-button.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue-light);
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+        }
+
+        .heatmap-toggle {
+            padding: 10px 18px;
+            border-radius: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+        }
+
+        .heatmap-toggle:hover {
+            background: var(--surface);
+            border-color: var(--accent-orange);
+            transform: translateY(-2px);
+        }
+
+        .heatmap-toggle.active {
+            background: linear-gradient(135deg, var(--accent-red), var(--accent-orange));
+            border-color: var(--accent-red);
+            box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+            color: white;
+        }
+
+        .heatmap-icon {
+            font-size: 18px;
+        }
+
+        /* Heatmap Legend */
+        .heatmap-legend {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 1000;
+            min-width: 200px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        .heatmap-legend.visible {
+            display: block;
+        }
+
+        .legend-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 16px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .legend-label {
+            color: var(--text-secondary);
+            flex: 1;
+        }
+
+        /* Hot zone circle markers */
+        .hot-zone-circle {
+            border-radius: 50%;
+            opacity: 1.0 !important;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+        }
+
+        /* Map Container */
+        #map {
+            flex: 1;
+            height: 100%;
+            min-height: 500px;
+            width: 100%;
+            background: var(--card-bg);
+            z-index: 1;
+            transition: filter 0.3s ease;
+        }
+
+        /* Grayscale mode for Hot Zone */
+        #map.grayscale-mode {
+            filter: grayscale(100%) contrast(1.1) brightness(0.9);
+        }
+
+        /* Ensure tiles are grayscale */
+        #map.grayscale-mode .leaflet-tile-pane {
+            filter: grayscale(100%);
+        }
+
+        /* Custom Popup Styles */
+        .leaflet-popup-content-wrapper {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .leaflet-popup-content {
+            margin: 16px;
+            min-width: 250px;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--card-bg);
+        }
+
+        .popup-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .popup-image-container {
+            position: relative;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .popup-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .popup-image:hover {
+            transform: scale(1.02);
+        }
+
+        .popup-image-count {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .popup-card-content {
+            padding: 12px;
+        }
+
+        .popup-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .popup-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .popup-severity {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .severity-critical { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .severity-high { background: rgba(245, 158, 11, 0.2); color: var(--accent-orange); }
+        .severity-medium { background: rgba(251, 191, 36, 0.2); color: var(--accent-yellow); }
+        .severity-low { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        .status-pending {
+            background: rgba(251, 191, 36, 0.2);
+            color: var(--accent-yellow);
+        }
+        
+        .status-solved {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-blue);
+        }
+        
+        .status-verified {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--accent-green);
+        }
+
+        .popup-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 12px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+
+        .popup-address {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .popup-images-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .popup-images-grid img {
+            width: 100%;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .popup-images-grid img:hover {
+            border-color: var(--accent-blue);
+            transform: scale(1.05);
+        }
+
+        .popup-no-image {
+            width: 100%;
+            height: 180px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 20, 25, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            z-index: 1000;
+            min-width: 200px;
+        }
+
+        .stats-title {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .main-wrapper {
+                margin-left: 200px;
+                width: calc(100% - 200px);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 0;
+                overflow: hidden;
+                padding: 0;
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+                width: 100%;
+            }
+
+            .search-bar {
+                flex-direction: column;
+                gap: 12px;
+                align-items: stretch;
+            }
+
+            .map-controls {
+                flex-wrap: wrap;
+            }
+
+            .stats-panel {
+                top: 10px;
+                right: 10px;
+                padding: 12px;
+                min-width: 150px;
+            }
+        }
+
+        /* Authentication Styles */
+        .auth-button {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .auth-button:hover {
+            background: #2563eb;
+        }
+
+        .user-info {
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-info-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .logout-button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .logout-button:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            
+            <!-- User Info / Login Section -->
+            <div id="authSection">
+                <!-- Guest View -->
+                <div id="guestAuth" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button class="auth-button" onclick="window.location.href='login.html'">Login</button>
+                    <button class="auth-button" style="background: var(--accent-cyan);" onclick="window.location.href='signup.html'">Register</button>
+                </div>
+                <!-- Logged In View -->
+                <div id="userAuth" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-info-text">
+                            <div class="user-info-name" id="userName">User</div>
+                            <div class="user-info-role" id="userRole">Guest</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="index.html" class="nav-item" data-role="not-admin">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="map.html" class="nav-item active" data-role="all">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
+                    <div class="nav-icon">G</div>
+                    <span>General</span>
+                </a>
+                <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="rankings.html" class="nav-item" id="navRankings" data-role="user">
+                    <div class="nav-icon">R</div>
+                    <span>Rankings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="main-wrapper">
+            <!-- Top Bar -->
+            <div class="search-bar">
+                <div class="map-controls">
+                    <button class="control-button" onclick="loadReports()" title="Refresh Reports" style="margin-right: 8px;">🔄</button>
+                    <button class="heatmap-toggle" id="heatmapToggle" onclick="toggleHeatmap()" title="Toggle Hot Zone View">
+                        <span class="heatmap-icon">🔥</span>
+                        <span>Hot Zone</span>
+                    </button>
+                    <select class="map-filter" id="severityFilter" onchange="applyFilters()">
+                        <option value="">All Severities</option>
+                        <option value="CRITICAL">Critical</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                    <select class="map-filter" id="categoryFilter" onchange="applyFilters()">
+                        <option value="">All Categories</option>
+                        <option value="Roads & Infrastructure">Roads & Infrastructure</option>
+                        <option value="Sanitation & Waste Management">Sanitation & Waste Management</option>
+                        <option value="Street Lighting & Electricity">Street Lighting & Electricity</option>
+                        <option value="Water & Sewage">Water & Sewage</option>
+                        <option value="Traffic & Parking">Traffic & Parking</option>
+                        <option value="Parks & Green Spaces">Parks & Green Spaces</option>
+                        <option value="Public Safety & Vandalism">Public Safety & Vandalism</option>
+                        <option value="Environment & Pollution">Environment & Pollution</option>
+                        <option value="Animal Control">Animal Control</option>
+                        <option value="Public Transport & Facilities">Public Transport & Facilities</option>
+                    </select>
+                    <label id="ownReportsFilterContainer" style="display: none; color: var(--text-secondary); font-size: 14px; margin-left: 15px; cursor: pointer;">
+                        <input type="checkbox" id="ownReportsFilter" onchange="applyFilters()" style="margin-right: 5px; cursor: pointer;">
+                        Show Only My Reports
+                    </label>
+                </div>
+                <div class="control-buttons">
+                    <button class="control-button" onclick="window.location.href='settings.html'" title="Settings">
+                        <span style="font-size: 18px;">⚙️</span>
+                    </button>
+                    <button class="control-button" onclick="window.location.href='profile.html'" title="Profile">
+                        <span style="font-size: 18px;">👤</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div id="map"></div>
+
+            <!-- Stats Panel -->
+            <div class="stats-panel" id="statsPanel">
+                <div class="stats-title">Map Statistics</div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Reports:</span>
+                    <span class="stat-value" id="totalReports">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Critical:</span>
+                    <span class="stat-value" style="color: var(--accent-red);" id="criticalCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">High:</span>
+                    <span class="stat-value" style="color: var(--accent-orange);" id="highCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Medium:</span>
+                    <span class="stat-value" style="color: var(--accent-yellow);" id="mediumCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Low:</span>
+                    <span class="stat-value" style="color: var(--accent-green);" id="lowCount">0</span>
+                </div>
+            </div>
+
+            <!-- Heatmap Legend -->
+            <div class="heatmap-legend" id="heatmapLegend">
+                <div class="legend-title">
+                    <span>🔥</span>
+                    <span>Hot Zone Density</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, rgba(255,0,0,1) 0%, rgba(255,0,0,0.8) 100%);"></div>
+                    <div class="legend-label">Very High</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, rgba(255,165,0,0.9) 0%, rgba(255,165,0,0.7) 100%);"></div>
+                    <div class="legend-label">High</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, rgba(255,255,0,0.8) 0%, rgba(255,255,0,0.6) 100%);"></div>
+                    <div class="legend-label">Medium</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, rgba(0,255,0,0.7) 0%, rgba(0,255,255,0.6) 100%);"></div>
+                    <div class="legend-label">Low</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(90deg, rgba(0,0,255,0.5) 0%, rgba(0,0,255,0.2) 100%);"></div>
+                    <div class="legend-label">Very Low</div>
+                </div>
+                <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted);">
+                    Brighter colors = Higher intensity
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading map data...</div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet.heat Plugin for Heatmap -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <script>
+        let map;
+        let markers = [];
+        let allReports = [];
+        let heatmapLayer = null;
+        let heatmapData = [];
+        let isHeatmapMode = false;
+        
+        // Check if Leaflet.heat loaded
+        window.addEventListener('load', function() {
+            console.log('🔥 Checking if Leaflet.heat is loaded...');
+            if (typeof L !== 'undefined' && typeof L.heatLayer !== 'undefined') {
+                console.log('✅ Leaflet.heat loaded successfully!');
+            } else {
+                console.error('❌ Leaflet.heat NOT loaded! Heatmap will not work.');
+            }
+        });
+
+        // Initialize map
+        // Check authentication and show/hide own reports filter
+        async function checkAuthAndSetupUI() {
+            try {
+                const response = await fetch('check_auth.php');
+                const data = await response.json();
+                
+                // Show "Show Only My Reports" filter for registered users and admins
+                if (data.authenticated && data.user && data.user.role !== 'guest') {
+                    const filterContainer = document.getElementById('ownReportsFilterContainer');
+                    if (filterContainer) {
+                        filterContainer.style.display = 'inline-block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+            }
+        }
+
+        window.addEventListener('load', async () => {
+            console.log('Page loaded, initializing map...');
+            showLoading();
+            
+            // Check auth and setup UI
+            await checkAuthAndSetupUI();
+            
+            // Check if Leaflet is loaded
+            if (typeof L === 'undefined') {
+                console.error('Leaflet library not loaded!');
+                alert('Map library failed to load. Please refresh the page.');
+                hideLoading();
+                return;
+            }
+            
+            console.log('Leaflet loaded, version:', L.version);
+            initMap();
+            
+            // Wait for map to be fully initialized
+            setTimeout(() => {
+                if (map) {
+                    console.log('Map initialized, loading reports...');
+                    // Trigger map resize to ensure it renders properly
+                    setTimeout(() => {
+                        map.invalidateSize();
+                        loadReports();
+                    }, 300);
+                } else {
+                    console.error('Map initialization failed!');
+                    hideLoading();
+                }
+            }, 500);
+        });
+
+        function initMap() {
+            console.log('Initializing map...');
+            const mapElement = document.getElementById('map');
+            if (!mapElement) {
+                console.error('Map element not found!');
+                return;
+            }
+            
+            console.log('Map element found, creating Leaflet map...');
+            // Initialize map centered on Prishtina, Kosovo as default
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: true
+            }).setView([42.6629, 21.1655], 13);
+            
+            console.log('Map created:', map);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Keep map centered on Prishtina, Kosovo - don't use GPS
+            // Map is already centered on Prishtina from initialization
+        }
+
+        async function loadReports() {
+            try {
+                console.log('Loading reports...');
+                const severity = document.getElementById('severityFilter').value;
+                const category = document.getElementById('categoryFilter').value;
+                const ownReportsCheckbox = document.getElementById('ownReportsFilter');
+                const filterOwn = ownReportsCheckbox && ownReportsCheckbox.checked;
+
+                let url = 'get_map_reports.php?limit=1000';
+                if (severity) url += `&severity=${severity}`;
+                if (category) url += `&category=${category}`;
+                if (filterOwn) url += `&filter_own=true`;
+
+                console.log('Fetching from:', url);
+                const response = await fetch(url);
+                const data = await response.json();
+
+                console.log('Response data:', data);
+                console.log('Reports received:', data.reports ? data.reports.length : 0);
+
+                if (data.status === 'success') {
+                    allReports = data.reports;
+                    
+                    // Filter reports with valid location
+                    const reportsWithLocation = data.reports.filter(r => {
+                        const hasLocation = r.latitude != null && r.longitude != null && 
+                                          r.latitude != 0 && r.longitude != 0 &&
+                                          !isNaN(parseFloat(r.latitude)) && !isNaN(parseFloat(r.longitude));
+                        if (hasLocation) {
+                            console.log('Report with location:', r.title, r.latitude, r.longitude);
+                        }
+                        return hasLocation;
+                    });
+                    
+                    console.log('Reports with valid location:', reportsWithLocation.length);
+                    
+                    if (reportsWithLocation.length === 0) {
+                        console.warn('No reports with location found!');
+                        // Show a message on the map
+                        if (map) {
+                            map.eachLayer(function(layer) {
+                                if (layer instanceof L.Marker && layer.getPopup() && layer.getPopup().getContent().includes('No reports')) {
+                                    map.removeLayer(layer);
+                                }
+                            });
+                            
+                            // Add a center marker with message
+                            const centerMarker = L.marker(map.getCenter())
+                                .addTo(map)
+                                .bindPopup('<div style="text-align: center; padding: 20px;"><h3>No Reports with Location</h3><p>Submit a report with location data to see it on the map.</p></div>')
+                                .openPopup();
+                        }
+                    } else {
+                        await displayReportsOnMap(reportsWithLocation);
+                    }
+                    
+                    updateStats(data.reports);
+                    hideLoading();
+                } else {
+                    console.error('Error loading reports:', data.message);
+                    alert('Error loading reports: ' + (data.message || 'Unknown error'));
+                    hideLoading();
+                }
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+                hideLoading();
+            }
+        }
+
+        async function displayReportsOnMap(reports) {
+            console.log('Displaying reports on map:', reports.length);
+            console.log('Map object:', map);
+            console.log('Map initialized:', map ? 'YES' : 'NO');
+            
+            if (!map) {
+                console.error('Map is not initialized! Waiting and retrying...');
+                setTimeout(async () => {
+                    if (map) {
+                        await displayReportsOnMap(reports);
+                    } else {
+                        console.error('Map still not initialized after wait');
+                    }
+                }, 1000);
+                return;
+            }
+            
+            // Clear existing markers
+            if (markers && markers.length > 0) {
+                markers.forEach(marker => {
+                    try {
+                        map.removeLayer(marker);
+                    } catch (e) {
+                        console.warn('Error removing marker:', e);
+                    }
+                });
+            }
+            markers = [];
+
+            // Add new markers - use Promise.all to properly await async marker creation
+            const markerPromises = reports.map(async (report, index) => {
+                const lat = parseFloat(report.latitude);
+                const lng = parseFloat(report.longitude);
+                
+                console.log(`Processing report ${index + 1}:`, {
+                    title: report.title,
+                    lat: lat,
+                    lng: lng,
+                    latValid: !isNaN(lat) && lat !== 0,
+                    lngValid: !isNaN(lng) && lng !== 0
+                });
+                
+                if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+                    console.log(`Adding marker ${index + 1}:`, report.title, 'at', lat, lng);
+                    try {
+                        const marker = await createMarker(report);
+                        if (marker) {
+                            console.log(`✅ Marker ${index + 1} added successfully`);
+                            return marker;
+                        } else {
+                            console.error(`❌ Marker ${index + 1} creation returned null/undefined`);
+                            return null;
+                        }
+                    } catch (error) {
+                        console.error('Error creating marker for report:', report.title, error);
+                        console.error('Error stack:', error.stack);
+                        return null;
+                    }
+                } else {
+                    console.warn('Skipping report without valid location:', report.title, 'lat:', lat, 'lng:', lng);
+                    return null;
+                }
+            });
+            
+            // Wait for all markers to be created
+            const createdMarkers = await Promise.all(markerPromises);
+            // Filter out null values and add to markers array
+            markers = createdMarkers.filter(marker => marker !== null);
+
+            console.log('Total markers added:', markers.length);
+            console.log('Markers array:', markers);
+
+            // Just add markers, keep map centered on Prishtina
+            if (markers.length > 0) {
+                console.log('Added', markers.length, 'markers to map');
+                map.invalidateSize();
+                
+                // Keep map centered on Prishtina, don't auto-fit
+                // Markers will be visible if user zooms out or pans
+                map.setView([42.6629, 21.1655], 13);
+            } else {
+                console.warn('⚠️ No markers to display on map!');
+            }
+        }
+
+        // Cache for trust scores to avoid multiple API calls
+        const trustScoreCache = {};
+        
+        // Fetch trust score for a user
+        async function getTrustScore(userId) {
+            if (!userId) return null;
+            
+            // Check cache first
+            if (trustScoreCache[userId]) {
+                return trustScoreCache[userId];
+            }
+            
+            try {
+                const response = await fetch(`get_user_trust_score.php?user_id=${userId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    trustScoreCache[userId] = data;
+                    return data;
+                }
+            } catch (error) {
+                console.error('Error fetching trust score:', error);
+            }
+            
+            return null;
+        }
+        
+        // Get badge HTML for trust score
+        function getTrustBadgeHtml(trustData) {
+            if (!trustData) return '';
+            
+            const badgeLevel = trustData.badge_level || 'Novice';
+            const trustScore = trustData.trust_score || 0;
+            const badgeColor = trustData.badge_color || '#6b7280';
+            
+            return `
+                <span class="trust-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: ${badgeColor}20; color: ${badgeColor}; border: 1px solid ${badgeColor}40; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                    ⭐ ${badgeLevel} (${trustScore})
+                </span>
+            `;
+        }
+
+        async function createMarker(report) {
+            // Parse coordinates to ensure they're numbers
+            const lat = parseFloat(report.latitude);
+            const lng = parseFloat(report.longitude);
+            
+            console.log('createMarker called for:', report.title, 'lat:', lat, 'lng:', lng, 'map:', map);
+            
+            if (isNaN(lat) || isNaN(lng)) {
+                throw new Error(`Invalid coordinates for report: ${report.title} - lat: ${lat}, lng: ${lng}`);
+            }
+            
+            if (!map) {
+                throw new Error('Map is not initialized');
+            }
+            
+            // Choose marker color based on severity
+            let markerColor = '#10b981'; // green for low
+            if (report.severity === 'CRITICAL') markerColor = '#ef4444';
+            else if (report.severity === 'HIGH') markerColor = '#f59e0b';
+            else if (report.severity === 'MEDIUM') markerColor = '#fbbf24';
+
+            // Create custom icon
+            const icon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="background: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.4);"></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            console.log('Creating Leaflet marker at:', [lat, lng]);
+            const marker = L.marker([lat, lng], { icon });
+            
+            console.log('Marker created:', marker);
+            marker.addTo(map);
+            console.log('Marker added to map');
+
+            // Fetch trust score if user_id exists
+            let trustBadgeHtml = '';
+            if (report.user_id) {
+                const trustData = await getTrustScore(report.user_id);
+                trustBadgeHtml = getTrustBadgeHtml(trustData);
+            }
+
+            // Create image HTML - prioritize first image for card display
+            let imageHtml = '';
+            if (report.images && Array.isArray(report.images) && report.images.length > 0) {
+                // Use first image as the main card image
+                const firstImage = report.images[0];
+                imageHtml = `
+                    <div class="popup-image-container">
+                        <img src="${escapeHtml(firstImage)}" class="popup-image" alt="Report image" onclick="window.open('${escapeHtml(firstImage)}', '_blank')">
+                        ${report.images.length > 1 ? `<div class="popup-image-count">+${report.images.length - 1} more</div>` : ''}
+                    </div>
+                `;
+            } else {
+                imageHtml = '<div class="popup-no-image">📷 No image attached</div>';
+            }
+
+            // Create popup content with card-like structure
+            const popupContent = `
+                <div class="popup-card">
+                    ${imageHtml}
+                    <div class="popup-card-content">
+                        <div class="popup-title">${escapeHtml(report.title || 'Untitled Report')}</div>
+                        ${trustBadgeHtml ? `<div style="margin-bottom: 8px;">${trustBadgeHtml}</div>` : ''}
+                        <div class="popup-meta">
+                            <span>${report.timeAgo || 'Just now'}</span>
+                            ${report.category ? `<span>•</span><span>${escapeHtml(report.category)}</span>` : ''}
+                            <span>•</span>
+                            <span class="status-badge status-${(report.status || 'pending').toLowerCase()}">${(report.status || 'pending').toUpperCase()}</span>
+                        </div>
+                        <div class="popup-severity severity-${(report.severity || 'MEDIUM').toLowerCase()}">${report.severity || 'MEDIUM'}</div>
+                        ${report.description ? `<div class="popup-description">${escapeHtml(report.description.length > 100 ? report.description.substring(0, 100) + '...' : report.description)}</div>` : ''}
+                        ${report.address ? `<div class="popup-address">📍 ${escapeHtml(report.address)}</div>` : ''}
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <button onclick="openTimelineModal(${report.id}, '${report.report_type || 'general'}'); if (window.map) { window.map.closePopup(); }" style="padding: 6px 12px; background: var(--accent-cyan); color: white; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer;">
+                                View Timeline →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            marker.bindPopup(popupContent, {
+                maxWidth: 350,
+                className: 'custom-popup'
+            });
+
+            return marker;
+        }
+
+        function updateStats(reports) {
+            document.getElementById('totalReports').textContent = reports.length;
+            document.getElementById('criticalCount').textContent = reports.filter(r => r.severity === 'CRITICAL').length;
+            document.getElementById('highCount').textContent = reports.filter(r => r.severity === 'HIGH').length;
+            document.getElementById('mediumCount').textContent = reports.filter(r => r.severity === 'MEDIUM').length;
+            document.getElementById('lowCount').textContent = reports.filter(r => r.severity === 'LOW').length;
+        }
+
+        async function applyFilters() {
+            showLoading();
+            await loadReports();
+            
+            // If in hot zone mode, reload heatmap too
+            if (isHeatmapMode) {
+                await loadHeatmapData();
+                hideMarkers();
+                showHeatmapLayer();
+            }
+            
+            hideLoading();
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Open timeline modal
+        async function openTimelineModal(reportId, reportType) {
+            const modal = document.createElement('div');
+            modal.id = 'timelineModal';
+            modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; overflow-y: auto; padding: 20px;';
+            
+            modal.innerHTML = `
+                <div style="background: var(--card-bg); border-radius: 16px; padding: 30px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative;">
+                    <button onclick="closeTimelineModal()" style="position: absolute; top: 20px; right: 20px; background: var(--text-muted); color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">×</button>
+                    <h2 style="margin-top: 0; margin-bottom: 30px; font-size: 24px;">Report Timeline</h2>
+                    <div id="timelineContent">
+                        <div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading timeline...</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            try {
+                const response = await fetch(`get_report_timeline.php?id=${reportId}&type=${reportType}`);
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.report) {
+                    renderTimelineModal(data.report, document.getElementById('timelineContent'));
+                } else {
+                    document.getElementById('timelineContent').innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: var(--accent-red);">
+                            <h3>Error</h3>
+                            <p>${data.message || 'Failed to load timeline'}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading timeline:', error);
+                document.getElementById('timelineContent').innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--accent-red);">
+                        <h3>Error</h3>
+                        <p>Failed to load timeline. Please try again.</p>
+                    </div>
+                `;
+            }
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    closeTimelineModal();
+                }
+            });
+        }
+        
+        function closeTimelineModal() {
+            const modal = document.getElementById('timelineModal');
+            if (modal) modal.remove();
+        }
+        
+        function renderTimelineModal(report, container) {
+            const status = report.status || 'pending';
+            const timeline = [];
+
+            timeline.push({
+                icon: '⏳',
+                title: 'Report Created',
+                description: 'Report was submitted and is pending review',
+                status: 'pending',
+                timestamp: report.created_at || report.timestamp,
+                active: true
+            });
+
+            if (status === 'solved' || status === 'verified') {
+                timeline.push({
+                    icon: '✅',
+                    title: 'Marked as Solved',
+                    description: 'Admin marked this report as solved',
+                    status: 'solved',
+                    timestamp: report.updated_at || report.created_at,
+                    active: status === 'solved' || status === 'verified'
+                });
+            }
+
+            if (status === 'verified') {
+                timeline.push({
+                    icon: '🔍',
+                    title: 'Verified',
+                    description: report.verified_by ? `Verified by ${escapeHtml(report.verified_by)}` : 'Issue was verified as fixed',
+                    status: 'verified',
+                    timestamp: report.verified_at || report.updated_at,
+                    active: true,
+                    photo: report.verification_photo
+                });
+            } else if (status === 'solved') {
+                timeline.push({
+                    icon: '⏳',
+                    title: 'Verification Pending',
+                    description: 'Waiting for on-site verification with photo',
+                    status: 'pending',
+                    timestamp: null,
+                    active: false
+                });
+            }
+
+            let html = `
+                <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+                    <div style="font-size: 20px; font-weight: 700; margin-bottom: 12px;">${escapeHtml(report.hazard || report.title || 'Unknown Report')}</div>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; color: var(--text-muted); font-size: 14px;">
+                        <span>Report ID: ${report.id}</span>
+                        <span>•</span>
+                        <span>Type: ${report.report_type || 'analysis'}</span>
+                        <span>•</span>
+                        <span>Severity: ${report.severity || 'UNKNOWN'}</span>
+                        <span>•</span>
+                        <span>Status: <strong>${status.toUpperCase()}</strong></span>
+                    </div>
+                </div>
+                <div style="position: relative; padding: 20px 0;">
+            `;
+
+            timeline.forEach((node, index) => {
+                const isLast = index === timeline.length - 1;
+                html += `
+                    <div style="position: relative; margin-bottom: 40px;">
+                        ${!isLast ? `<div style="position: absolute; left: 30px; top: 60px; width: 2px; height: 40px; background: ${node.active ? 'linear-gradient(180deg, var(--accent-blue), var(--accent-cyan))' : 'var(--border-color)'}; z-index: 1; box-shadow: ${node.active ? '0 0 8px rgba(59, 130, 246, 0.5)' : 'none'};"></div>` : ''}
+                        <div style="display: flex; align-items: center; gap: 20px; position: relative; z-index: 2;">
+                            <div style="width: 60px; height: 60px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); background: linear-gradient(135deg, ${node.status === 'pending' ? 'var(--accent-yellow), var(--accent-orange)' : node.status === 'solved' ? 'var(--accent-blue), var(--accent-cyan)' : 'var(--accent-green), var(--accent-cyan)'});">
+                                ${node.icon}
+                            </div>
+                            <div style="flex: 1; background: var(--surface); padding: 20px; border-radius: 12px; border: 1px solid var(--border-color);">
+                                <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">${node.title}</div>
+                                <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 12px;">${node.description}</div>
+                                <div style="display: flex; gap: 16px; font-size: 12px; color: var(--text-muted);">
+                                    ${node.timestamp ? `<span>📅 ${formatDate(node.timestamp)}</span>` : ''}
+                                </div>
+                                ${node.photo ? `
+                                    <div style="margin-top: 12px; max-width: 300px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color);">
+                                        <img src="${escapeHtml(node.photo)}" alt="Verification photo" style="width: 100%; height: auto; display: block;">
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ============================================
+        // HEATMAP FUNCTIONS
+        // ============================================
+
+        async function toggleHeatmap() {
+            console.log('🔥 toggleHeatmap() called, current mode:', isHeatmapMode);
+            
+            // Check if Leaflet.heat is available
+            if (typeof L === 'undefined' || typeof L.heatLayer === 'undefined') {
+                alert('❌ Heatmap library not loaded! Please refresh the page.');
+                console.error('Leaflet.heat not available');
+                return;
+            }
+            
+            const toggleButton = document.getElementById('heatmapToggle');
+            const legend = document.getElementById('heatmapLegend');
+            const mapElement = document.getElementById('map');
+            isHeatmapMode = !isHeatmapMode;
+            
+            console.log('🔥 Switching to hot zone mode:', isHeatmapMode);
+            
+            if (isHeatmapMode) {
+                // Activate hot zone mode
+                console.log('🔥 Activating hot zone...');
+                toggleButton.classList.add('active');
+                if (legend) legend.classList.add('visible');
+                showLoading();
+                
+                try {
+                    // Keep map in color (no grayscale)
+                    await loadHeatmapData();
+                    hideMarkers();
+                    const success = showHeatmapLayer();
+                    
+                    if (success) {
+                        console.log('✅ Hot zone activated');
+                    } else {
+                        // showHeatmapLayer returned false (no data), mode already deactivated
+                        console.log('⚠️ Hot zone activation cancelled (no data)');
+                    }
+                } catch (error) {
+                    console.error('❌ Error activating hot zone:', error);
+                    alert('Error activating hot zone: ' + error.message);
+                    // Deactivate mode on error
+                    isHeatmapMode = false;
+                    toggleButton.classList.remove('active');
+                    if (legend) legend.classList.remove('visible');
+                    showMarkers();
+                } finally {
+                    // Always hide loading overlay
+                    hideLoading();
+                }
+            } else {
+                // Deactivate hot zone mode
+                console.log('🔥 Deactivating hot zone...');
+                toggleButton.classList.remove('active');
+                if (legend) legend.classList.remove('visible');
+                
+                hideHeatmapLayer();
+                showMarkers();
+                console.log('✅ Hot zone deactivated');
+            }
+        }
+
+        async function loadHeatmapData() {
+            console.log('🔥 loadHeatmapData() called');
+            try {
+                const severity = document.getElementById('severityFilter').value;
+                const category = document.getElementById('categoryFilter').value;
+                const ownReportsCheckbox = document.getElementById('ownReportsFilter');
+                const filterOwn = ownReportsCheckbox && ownReportsCheckbox.checked;
+
+                let url = 'get_heatmap_data.php?';
+                if (severity) url += `severity=${encodeURIComponent(severity)}&`;
+                if (category) url += `category=${encodeURIComponent(category)}&`;
+                if (filterOwn) url += `filter_own=true&`;
+
+                console.log('🔥 Loading heatmap data from:', url);
+                const response = await fetch(url);
+                console.log('🔥 Response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const text = await response.text();
+                console.log('🔥 Response text (first 200 chars):', text.substring(0, 200));
+                
+                const data = JSON.parse(text);
+                console.log('🔥 Parsed data:', data);
+
+                if (data.status === 'success') {
+                    heatmapData = data.heatmap_data || [];
+                    console.log('✅ Heatmap data loaded:', heatmapData.length, 'points');
+                    console.log('📊 Stats:', data.stats);
+                    
+                    if (heatmapData.length > 0) {
+                        console.log('🔥 First 3 data points:', heatmapData.slice(0, 3));
+                    } else {
+                        console.warn('⚠️ No heatmap points in response');
+                    }
+                } else {
+                    console.error('❌ Error loading heatmap data:', data.message);
+                    alert('Error loading heatmap: ' + (data.message || 'Unknown error'));
+                    heatmapData = [];
+                }
+            } catch (error) {
+                console.error('❌ Failed to load heatmap data:', error);
+                console.error('❌ Error stack:', error.stack);
+                alert('Failed to load heatmap data: ' + error.message + '\n\nCheck browser console for details.');
+                heatmapData = [];
+            }
+        }
+
+        function showHeatmapLayer() {
+            console.log('🔥 showHeatmapLayer() called');
+            console.log('🔥 Map initialized:', !!map);
+            console.log('🔥 Data points:', heatmapData.length);
+            
+            if (!map) {
+                console.error('❌ Map not initialized');
+                alert('Map not initialized. Please refresh the page.');
+                return false;
+            }
+
+            // Remove existing heatmap layer if any
+            if (heatmapLayer) {
+                console.log('🔥 Removing existing heatmap layer');
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+            }
+
+            if (heatmapData.length === 0) {
+                console.warn('⚠️ No data to display');
+                alert('No report data available for hot zone visualization.\n\nAdd some mock data using the SQL script provided.');
+                // Deactivate mode
+                isHeatmapMode = false;
+                const toggleButton = document.getElementById('heatmapToggle');
+                const legend = document.getElementById('heatmapLegend');
+                if (toggleButton) toggleButton.classList.remove('active');
+                if (legend) legend.classList.remove('visible');
+                showMarkers();
+                return false;
+            }
+
+            console.log('🔥 Sample heatmap data (first 3):', heatmapData.slice(0, 3));
+
+            try {
+                // Create heatmap layer with blurred gradient zones
+                console.log('🔥 Creating L.heatLayer with blurred zones...');
+                heatmapLayer = L.heatLayer(heatmapData, {
+                    radius: 50,              // Larger radius for visible zones
+                    blur: 40,                // More blur for smooth gradients
+                    maxZoom: 13,             // Show heatmap at this zoom
+                    max: 1.0,                // Max intensity
+                    minOpacity: 0.5,         // Minimum visibility
+                    gradient: {
+                        0.0: 'rgba(0, 0, 255, 0)',      // Transparent
+                        0.2: 'rgba(0, 100, 255, 0.4)',  // Light blue
+                        0.4: 'rgba(0, 255, 255, 0.5)',  // Cyan
+                        0.5: 'rgba(0, 255, 100, 0.6)',  // Light green
+                        0.6: 'rgba(150, 255, 0, 0.7)',  // Yellow-green
+                        0.7: 'rgba(255, 255, 0, 0.8)',  // Yellow
+                        0.8: 'rgba(255, 150, 0, 0.9)',  // Orange
+                        0.9: 'rgba(255, 50, 0, 0.95)',  // Red-orange
+                        1.0: 'rgba(255, 0, 0, 1.0)'     // Bright red
+                    }
+                });
+                
+                console.log('🔥 Heatmap layer created:', !!heatmapLayer);
+                console.log('🔥 Adding to map...');
+                heatmapLayer.addTo(map);
+                console.log('✅ Heatmap layer added to map successfully!');
+                
+                // Force map refresh
+                map.invalidateSize();
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error creating heatmap:', error);
+                alert('Error creating heatmap: ' + error.message);
+                return false;
+            }
+        }
+
+        function hideHeatmapLayer() {
+            console.log('🔥 Hiding heatmap layer...');
+            if (heatmapLayer && map) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+                console.log('✅ Heatmap layer removed');
+            }
+        }
+
+        function hideMarkers() {
+            markers.forEach(marker => {
+                if (map && marker && typeof marker.setOpacity === 'function') {
+                    try {
+                        marker.setOpacity(0);
+                    } catch (e) {
+                        console.warn('Error hiding marker:', e);
+                    }
+                }
+            });
+        }
+
+        function showMarkers() {
+            markers.forEach(marker => {
+                if (map && marker && typeof marker.setOpacity === 'function') {
+                    try {
+                        marker.setOpacity(1);
+                    } catch (e) {
+                        console.warn('Error showing marker:', e);
+                    }
+                }
+            });
+        }
+
+        // ============================================
+        // AUTHENTICATION FUNCTIONS
+        // ============================================
+
+        let currentUser = null;
+        let currentRole = 'guest';
+
+        // Check authentication status on page load
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php');
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    currentUser = data.user;
+                    currentRole = data.user.role;
+                    updateUIForAuth(true, data.user);
+                } else {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                updateUIForAuth(false, null);
+            }
+        }
+
+        // Update UI based on authentication status
+        // Update UI based on authentication status - Unified class-based approach
+        function updateUIForAuth(isAuthenticated, user) {
+            console.log('🔐 [map.html] Updating UI for auth:', { isAuthenticated, user });
+            
+            const guestAuth = document.getElementById('guestAuth');
+            const userAuth = document.getElementById('userAuth');
+            const sidebar = document.getElementById('mainSidebar');
+            const ownReportsFilterContainer = document.getElementById('ownReportsFilterContainer');
+
+            // Update auth section
+            if (isAuthenticated && user) {
+                guestAuth.style.display = 'none';
+                userAuth.style.display = 'block';
+                document.getElementById('userName').textContent = user.username;
+                document.getElementById('userRole').textContent = user.role;
+                
+                // Show "Show Only My Reports" filter for registered users and admins
+                if (ownReportsFilterContainer) {
+                    ownReportsFilterContainer.style.display = 'inline-block';
+                }
+                
+                console.log('✅ User authenticated:', user.username, user.role);
+            } else {
+                guestAuth.style.display = 'flex';
+                userAuth.style.display = 'none';
+                
+                // Hide "Show Only My Reports" filter for guests
+                if (ownReportsFilterContainer) {
+                    ownReportsFilterContainer.style.display = 'none';
+                }
+                
+                console.log('❌ Not authenticated (guest)');
+            }
+
+            // Update sidebar navigation visibility based on role using data-role attributes
+            const allNavItems = document.querySelectorAll('.nav-item[data-role]');
+            console.log('📋 Found nav items:', allNavItems.length);
+            
+            allNavItems.forEach(item => {
+                const requiredRole = item.getAttribute('data-role');
+                const itemName = item.querySelector('span')?.textContent || 'Unknown';
+                
+                // Remove hidden class first
+                item.classList.remove('hidden');
+                
+                if (requiredRole === 'all') {
+                    // Always visible
+                    console.log(`  ✓ ${itemName}: Always visible (all)`);
+                } else if (requiredRole === 'not-admin') {
+                    // Visible for guests and users, hidden for admins
+                    if (isAuthenticated && user && user.role === 'admin') {
+                        item.classList.add('hidden');
+                        console.log(`  ✗ ${itemName}: Hidden (admin detected)`);
+                    } else {
+                        console.log(`  ✓ ${itemName}: Visible (guest/user)`);
+                    }
+                } else if (requiredRole === 'user') {
+                    // Visible for registered users and admins
+                    if (isAuthenticated && user && (user.role === 'user' || user.role === 'admin')) {
+                        console.log(`  ✓ ${itemName}: Visible (user/admin)`);
+                    } else {
+                        item.classList.add('hidden');
+                        console.log(`  ✗ ${itemName}: Hidden (need user/admin)`);
+                    }
+                } else if (requiredRole === 'admin') {
+                    // Visible only for admins
+                    if (isAuthenticated && user && user.role === 'admin') {
+                        console.log(`  ✓ ${itemName}: Visible (admin only)`);
+                    } else {
+                        item.classList.add('hidden');
+                        console.log(`  ✗ ${itemName}: Hidden (need admin)`);
+                    }
+                }
+            });
+
+            // Show sidebar after auth check complete
+            if (sidebar) {
+                sidebar.classList.add('loaded');
+                console.log('🎨 Sidebar loaded and visible');
+            }
+        }
+
+        // Handle logout
+        async function handleLogout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                const response = await fetch('logout.php');
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                    location.reload();
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out');
+            }
+        }
+
+        // Initialize auth on page load
+        checkAuthStatus();
+    </script>
+</body>
+</html>
+

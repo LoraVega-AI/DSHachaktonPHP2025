@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .brand h1 {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .brand p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: 'DM Sans', sans-serif;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: 'DM Sans', sans-serif;
+            margin-top: 10px;
+        }
+
+        .submit-button:hover {
+            background: #2563eb;
+        }
+
+        .submit-button:disabled {
+            background: var(--surface);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .message.success {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .divider span {
+            padding: 0 15px;
+        }
+
+        .demo-accounts {
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .demo-accounts h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+        }
+
+        .demo-account {
+            background: var(--card-bg);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .demo-account:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(5px);
+        }
+
+        .demo-account:last-child {
+            margin-bottom: 0;
+        }
+
+        .demo-role {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--accent-cyan);
+            margin-bottom: 4px;
+        }
+
+        .demo-credentials {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .link-section {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .link-section a {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .link-section a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .back-link a:hover {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 30px 25px;
+            }
+
+            .brand h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="brand">
+            <h1>UrbanPulse</h1>
+            <p>Advanced Acoustic Monitor</p>
+        </div>
+
+        <div class="login-card">
+            <div class="login-header">
+                <h2>Welcome Back</h2>
+                <p>Sign in to your account to continue</p>
+            </div>
+
+            <div id="messageContainer"></div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="username">Username or Email</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username or email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+
+                <button type="submit" class="submit-button" id="submitBtn">Sign In</button>
+            </form>
+
+            <div class="divider">
+                <span>or try demo accounts</span>
+            </div>
+
+            <div class="demo-accounts">
+                <h3>🎭 Quick Login (Demo Accounts)</h3>
+                <div class="demo-account" onclick="loginDemo('admin', 'admin123')">
+                    <div class="demo-role">👑 Admin Account</div>
+                    <div class="demo-credentials">admin / admin123</div>
+                </div>
+                <div class="demo-account" onclick="loginDemo('user1', 'user123')">
+                    <div class="demo-role">👤 User Account</div>
+                    <div class="demo-credentials">user1 / user123</div>
+                </div>
+                <div class="demo-account" onclick="loginDemo('john_doe', 'john123')">
+                    <div class="demo-role">👤 User Account</div>
+                    <div class="demo-credentials">john_doe / john123</div>
+                </div>
+            </div>
+
+            <div class="link-section">
+                Don't have an account? <a href="signup.html">Create one</a>
+            </div>
+        </div>
+
+        <div class="back-link">
+            <a href="index.html">← Back to Home</a>
+        </div>
+    </div>
+
+    <script>
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageContainer = document.getElementById('messageContainer');
+            const submitBtn = document.getElementById('submitBtn');
+
+            submitBtn.disabled = true;
+            messageContainer.innerHTML = '<div class="message">Signing in...</div>';
+
+            try {
+                const response = await fetch('login.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    messageContainer.innerHTML = '<div class="message success">✓ Login successful! Redirecting...</div>';
+                    setTimeout(() => {
+                        // Redirect admins to general page, others to monitor page
+                        if (data.user && data.user.role === 'admin') {
+                            window.location.href = 'general.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    }, 1000);
+                } else {
+                    messageContainer.innerHTML = `<div class="message error">✗ ${data.message || 'Login failed'}</div>`;
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                messageContainer.innerHTML = '<div class="message error">✗ Error connecting to server</div>';
+                submitBtn.disabled = false;
+            }
+        }
+
+        function loginDemo(username, password) {
+            document.getElementById('username').value = username;
+            document.getElementById('password').value = password;
+            
+            // Auto-submit after a brief moment
+            setTimeout(() => {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }, 100);
+        }
+    </script>
+</body>
+</html>
+
