@@ -19,8 +19,13 @@ if (!isLoggedIn()) {
     exit;
 }
 
-// Check if user is admin
-requireRole('admin');
+// Check if user is admin or crew (crew managers can assign tasks)
+$userRole = getUserRole();
+if ($userRole !== 'admin' && $userRole !== 'crew') {
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+    exit;
+}
 
 // Get request method
 $method = $_SERVER['REQUEST_METHOD'];
@@ -65,6 +70,13 @@ try {
         if (!$user) {
             http_response_code(400);
             echo json_encode(['status' => 'error', 'message' => 'Assigned user not found']);
+            exit;
+        }
+        
+        // Crew managers can only assign to crew members, not admins
+        if ($userRole === 'crew' && $user['role'] === 'admin') {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Crew managers can only assign tasks to crew members, not admins']);
             exit;
         }
         

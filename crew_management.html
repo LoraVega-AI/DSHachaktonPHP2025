@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crew Management - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1a2332;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #fbbf24;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --sidebar-bg: #0f1419;
+            --active-bg: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            background: var(--primary-bg);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 48px;
+            letter-spacing: -0.5px;
+            cursor: pointer;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        .nav-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .nav-item.active .nav-icon {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        .main-wrapper {
+            flex: 1;
+            margin-left: 240px;
+            display: flex;
+            flex-direction: column;
+            width: calc(100% - 240px);
+        }
+
+        .search-bar {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--secondary-bg);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .control-button {
+            padding: 12px;
+            min-width: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-button:hover {
+            background: var(--surface);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px;
+            width: 100%;
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .btn-primary {
+            padding: 12px 24px;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-blue-light);
+            transform: translateY(-2px);
+        }
+
+        .crew-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .crew-card {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .crew-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .crew-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .crew-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .crew-email {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .crew-stats {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .stat-item {
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent-blue);
+        }
+
+        .crew-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            background: var(--surface);
+            border-color: var(--accent-blue);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .btn-secondary {
+            padding: 12px 24px;
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .auth-button {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .auth-button:hover {
+            background: #2563eb;
+        }
+
+        .user-info {
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .user-info-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-crew {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-blue);
+        }
+
+        .badge-admin {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            
+            <div id="authSection">
+                <div id="guestAuth" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button class="auth-button" onclick="window.location.href='login.html'">Login</button>
+                    <button class="auth-button" style="background: var(--accent-cyan);" onclick="window.location.href='signup.html'">Register</button>
+                </div>
+                <div id="userAuth" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-info-name" id="userName">User</div>
+                        <div class="user-info-role" id="userRole">Guest</div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
+                    <div class="nav-icon">C</div>
+                    <span>Tasks</span>
+                </a>
+                <a href="crew_member_dashboard.html" class="nav-item" id="navCrewMemberDashboard" data-role="crew-member" style="display:none;">
+                    <div class="nav-icon">W</div>
+                    <span>My Work</span>
+                </a>
+                <a href="index.html" class="nav-item" data-role="not-admin">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="map.html" class="nav-item" data-role="all">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
+                    <div class="nav-icon">G</div>
+                    <span>General</span>
+                </a>
+                <a href="crew_management.html" class="nav-item active" id="navCrewManagement" data-role="admin">
+                    <div class="nav-icon">👥</div>
+                    <span>Crew Management</span>
+                </a>
+                <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="rankings.html" class="nav-item" id="navRankings" data-role="user">
+                    <div class="nav-icon">R</div>
+                    <span>Rankings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="main-wrapper">
+            <div class="search-bar">
+                <div class="control-buttons">
+                    <button class="control-button" onclick="window.location.href='settings.html'" title="Settings">
+                        <span style="font-size: 18px;">⚙️</span>
+                    </button>
+                    <button class="control-button" onclick="window.location.href='profile.html'" title="Profile">
+                        <span style="font-size: 18px;">👤</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="container">
+                <div class="header">
+                    <h1>👥 Crew Management</h1>
+                    <p>Manage crew members, create accounts, and assign tasks</p>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">
+                        <span>Crew Members</span>
+                        <button class="btn-primary" onclick="openCreateModal()">+ Add Crew Member</button>
+                    </div>
+                    <div class="crew-grid" id="crewGrid">
+                        <div class="empty-state">Loading crew members...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create/Edit Modal -->
+    <div class="modal" id="crewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Create Crew Member</h2>
+                <p style="color: var(--text-muted);">Fill in the details to create a new crew member account</p>
+            </div>
+            <form id="crewForm" onsubmit="saveCrewMember(event)">
+                <input type="hidden" id="crewId" name="crew_id">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="crewUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="crewEmail" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="crewPassword" name="password" required>
+                    <small style="color: var(--text-muted);">Leave blank when editing to keep current password</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Save</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let currentRole = 'guest';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+            
+            // Add click handlers to navigation links to maintain manager context
+            document.querySelectorAll('.nav-item[href]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Maintain manager context when navigating from crew management
+                    const dashboardType = sessionStorage.getItem('crewDashboardType');
+                    if (dashboardType === 'manager') {
+                        sessionStorage.setItem('fromCrewDashboard', 'true');
+                    }
+                });
+            });
+        });
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php', {
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    // Both admin and crew managers can access crew management
+                    if (data.user.role !== 'admin' && data.user.role !== 'crew') {
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    
+                    currentUser = data.user;
+                    currentRole = data.user.role;
+                    
+                    // Mark as manager dashboard in session
+                    if (data.user.role === 'crew') {
+                        sessionStorage.setItem('crewDashboardType', 'manager');
+                        sessionStorage.setItem('fromCrewDashboard', 'true');
+                    }
+                    
+                    updateUIForAuth(true, data.user);
+                    loadCrewMembers();
+                } else {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                window.location.href = 'login.html';
+            }
+        }
+
+        function updateUIForAuth(isAuthenticated, user) {
+            const guestAuth = document.getElementById('guestAuth');
+            const userAuth = document.getElementById('userAuth');
+            const sidebar = document.getElementById('mainSidebar');
+
+            if (isAuthenticated && user) {
+                if (guestAuth) guestAuth.style.display = 'none';
+                if (userAuth) userAuth.style.display = 'block';
+                if (document.getElementById('userName')) {
+                    document.getElementById('userName').textContent = user.username;
+                }
+                if (document.getElementById('userRole')) {
+                    document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+                }
+            } else {
+                if (guestAuth) guestAuth.style.display = 'flex';
+                if (userAuth) userAuth.style.display = 'none';
+            }
+
+            // Crew management page is for managers only
+            const isCrewManager = true; // On crew_management, user is always a manager
+            
+            const allNavItems = document.querySelectorAll('.nav-item[data-role]');
+            allNavItems.forEach(item => {
+                const requiredRole = item.getAttribute('data-role');
+                const itemHref = item.getAttribute('href') || '';
+                let shouldShow = false;
+                
+                if (requiredRole === 'all') {
+                    shouldShow = true;
+                } else if (requiredRole === 'admin') {
+                    // Check if this is the General link - it should ONLY be shown to actual admins, not crew managers
+                    if (itemHref.includes('general.html')) {
+                        // General - ONLY for actual admins, NOT crew managers
+                        shouldShow = (isAuthenticated && user && user.role === 'admin');
+                    } else {
+                        // History, Crew Management - for admins and crew managers
+                        shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
+                    }
+                } else if (requiredRole === 'user') {
+                    // Rankings - for users and admins only, NOT crew managers
+                    if (itemHref.includes('rankings.html')) {
+                        // Rankings - ONLY for users and actual admins, NOT crew managers
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin'));
+                    } else {
+                        // Other user role items
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    }
+                } else if (requiredRole === 'not-admin') {
+                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                } else if (requiredRole === 'crew-only') {
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
+                } else if (requiredRole === 'crew-member') {
+                    shouldShow = false; // Hide "My Work" for managers
+                }
+                
+                item.style.display = shouldShow ? 'flex' : 'none';
+            });
+
+            if (sidebar) {
+                sidebar.classList.add('loaded');
+            }
+        }
+
+        async function loadCrewMembers() {
+            try {
+                const response = await fetch('get_crew_members.php', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    renderCrewMembers(data.crew_members);
+                } else {
+                    document.getElementById('crewGrid').innerHTML = '<div class="empty-state">Error loading crew members</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load crew members:', error);
+                document.getElementById('crewGrid').innerHTML = '<div class="empty-state">Error loading crew members</div>';
+            }
+        }
+
+        function renderCrewMembers(members) {
+            const grid = document.getElementById('crewGrid');
+            
+            if (members.length === 0) {
+                grid.innerHTML = '<div class="empty-state">No crew members found. Create your first crew member!</div>';
+                return;
+            }
+            
+            grid.innerHTML = members.map(member => `
+                <div class="crew-card">
+                    <div class="crew-header">
+                        <div>
+                            <div class="crew-name">${escapeHtml(member.username)}</div>
+                            <span class="badge ${member.role === 'admin' ? 'badge-admin' : 'badge-crew'}">${member.role}</span>
+                        </div>
+                    </div>
+                    <div class="crew-email">${escapeHtml(member.email)}</div>
+                    <div class="crew-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">Active Tasks</div>
+                            <div class="stat-value">${member.active_assignments || 0}</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Trust Score</div>
+                            <div class="stat-value">${member.trust_score || 0}</div>
+                        </div>
+                    </div>
+                    <div class="crew-actions">
+                        <button class="btn-small" onclick="viewAssignments(${member.id}, '${escapeHtml(member.username)}')">View Tasks</button>
+                        <button class="btn-small" onclick="editCrewMember(${member.id})">Edit</button>
+                        <button class="btn-small" onclick="assignTask(${member.id}, '${escapeHtml(member.username)}')">Assign Task</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openCreateModal() {
+            document.getElementById('modalTitle').textContent = 'Create Crew Member';
+            document.getElementById('crewForm').reset();
+            document.getElementById('crewId').value = '';
+            document.getElementById('crewPassword').required = true;
+            document.getElementById('crewModal').classList.add('active');
+        }
+
+        function editCrewMember(id) {
+            // Load crew member data and populate form
+            fetch('get_crew_members.php', { credentials: 'include' })
+                .then(r => r.json())
+                .then(data => {
+                    const member = data.crew_members.find(m => m.id == id);
+                    if (member) {
+                        document.getElementById('modalTitle').textContent = 'Edit Crew Member';
+                        document.getElementById('crewId').value = member.id;
+                        document.getElementById('crewUsername').value = member.username;
+                        document.getElementById('crewEmail').value = member.email;
+                        document.getElementById('crewPassword').value = '';
+                        document.getElementById('crewPassword').required = false;
+                        document.getElementById('crewPassword').placeholder = 'Leave blank to keep current password';
+                        document.getElementById('crewModal').classList.add('active');
+                    }
+                });
+        }
+
+        function closeModal() {
+            document.getElementById('crewModal').classList.remove('active');
+        }
+
+        async function saveCrewMember(event) {
+            event.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('crewUsername').value,
+                email: document.getElementById('crewEmail').value,
+                password: document.getElementById('crewPassword').value
+            };
+            
+            const crewId = document.getElementById('crewId').value;
+            if (crewId) {
+                formData.id = crewId;
+            }
+            
+            try {
+                const response = await fetch('create_crew_member.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Crew member saved successfully!');
+                    closeModal();
+                    loadCrewMembers();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to save crew member'));
+                }
+            } catch (error) {
+                console.error('Error saving crew member:', error);
+                alert('Error: Failed to save crew member');
+            }
+        }
+
+        function viewAssignments(memberId, memberName) {
+            window.location.href = `history.html?assigned_to=${memberId}`;
+        }
+
+        function assignTask(memberId, memberName) {
+            window.location.href = `history.html?assign_to=${memberId}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close modal on outside click
+        document.getElementById('crewModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
+

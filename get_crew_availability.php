@@ -123,9 +123,9 @@ function getCrewWeeklySchedule($userId) {
 }
 
 /**
- * API endpoint
+ * API endpoint - Only run when accessed directly, not when included
  */
-if (php_sapi_name() !== 'cli') {
+if (php_sapi_name() !== 'cli' && basename($_SERVER['PHP_SELF']) === basename(__FILE__)) {
     header("Content-Type: application/json; charset=UTF-8");
     header("Access-Control-Allow-Origin: *");
     
@@ -154,6 +154,7 @@ if (php_sapi_name() !== 'cli') {
     }
     
     echo json_encode($result, JSON_PRETTY_PRINT);
+    exit;
 }
 ?>
 

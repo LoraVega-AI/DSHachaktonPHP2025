@@ -26,7 +26,7 @@
             --text-muted: #94a3b8;
             --border-color: #334155;
             --border-light: #475569;
-            --sidebar-bg: #0f1419;
+            --sidebar-bg: #1a2332;
             --active-bg: rgba(59, 130, 246, 0.15);
         }
 
@@ -53,20 +53,31 @@
         /* Sidebar */
         .sidebar {
             width: 240px;
-            background: var(--sidebar-bg);
-            border-right: 1px solid var(--border-color);
+            background: #1a2332 !important;
+            border-right: 2px solid #334155 !important;
             padding: 32px 24px;
-            display: flex;
+            display: flex !important;
             flex-direction: column;
             position: fixed;
+            left: 0;
+            top: 0;
             height: 100vh;
             overflow-y: auto;
+            opacity: 1 !important;
+            visibility: visible !important;
+            z-index: 1000;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Ensure sidebar is always visible, even before loaded class */
+        .sidebar.loaded {
+            opacity: 1 !important;
         }
 
         .sidebar-brand {
             font-size: 28px;
             font-weight: 800;
-            color: var(--text-primary);
+            color: var(--text-primary) !important;
             margin-bottom: 48px;
             letter-spacing: -0.5px;
             font-family: 'Poppins', sans-serif;
@@ -85,7 +96,7 @@
             gap: 16px;
             padding: 14px 16px;
             border-radius: 12px;
-            color: var(--text-secondary);
+            color: var(--text-secondary) !important;
             font-weight: 600;
             font-size: 15px;
             cursor: pointer;
@@ -398,8 +409,8 @@
             padding: 12px;
             border-radius: 8px;
             border: none;
-            background: var(--accent-blue);
-            color: white;
+            background: var(--accent-blue) !important;
+            color: white !important;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -408,7 +419,7 @@
         }
 
         .auth-button:hover {
-            background: #2563eb;
+            background: #2563eb !important;
         }
 
         .user-info {
@@ -454,6 +465,251 @@
         .logout-button:hover {
             background: #dc2626;
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .crew-member-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .crew-member-card {
+            background: var(--surface);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .crew-member-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .crew-member-card.selected {
+            border-color: var(--accent-blue);
+            background: var(--active-bg);
+        }
+
+        .crew-member-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .crew-member-email {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .crew-member-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .crew-member-stat-label {
+            color: var(--text-muted);
+        }
+
+        .crew-member-stat-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .crew-member-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        .crew-member-status.available {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .crew-member-status.unavailable {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Task List Styles */
+        .task-list {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .task-item {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .task-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .task-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .task-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            font-size: 13px;
+        }
+
+        .task-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .task-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .task-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -483,7 +739,11 @@
             <nav class="sidebar-nav">
                 <a href="crew_dashboard.html" class="nav-item active" id="navCrewDashboard" data-role="crew-only">
                     <div class="nav-icon">C</div>
-                    <span>My Tasks</span>
+                    <span>Tasks</span>
+                </a>
+                <a href="crew_member_dashboard.html" class="nav-item" id="navCrewMemberDashboard" data-role="crew-member" style="display:none;">
+                    <div class="nav-icon">W</div>
+                    <span>My Work</span>
                 </a>
                 <a href="index.html" class="nav-item" data-role="not-admin">
                     <div class="nav-icon">M</div>
@@ -493,9 +753,9 @@
                     <div class="nav-icon">P</div>
                     <span>Map</span>
                 </a>
-                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
-                    <div class="nav-icon">G</div>
-                    <span>General</span>
+                <a href="crew_management.html" class="nav-item" id="navCrewManagement" data-role="admin" style="display:none;">
+                    <div class="nav-icon">👥</div>
+                    <span>Crew Management</span>
                 </a>
                 <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
                     <div class="nav-icon">H</div>
@@ -512,40 +772,40 @@
         <div class="main-wrapper">
             <div class="dashboard-header">
                 <h1>Crew Dashboard</h1>
-                <p>Manage your assigned reports and respond to priority issues</p>
+                <p>Manage crew members, assign tasks, and respond to priority issues</p>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- Stats Cards (Manager View) -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-label">Assigned Reports</div>
+                    <div class="stat-label">Total Crew Members</div>
+                    <div class="stat-value" id="stat-crew-count">0</div>
+                    <div class="stat-change">Active crew members</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Assignments</div>
                     <div class="stat-value" id="stat-assigned">0</div>
-                    <div class="stat-change">Total assigned to you</div>
+                    <div class="stat-change">Tasks across all crew</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">In Progress</div>
-                    <div class="stat-value" id="stat-in-progress">0</div>
-                    <div class="stat-change">Currently working on</div>
+                    <div class="stat-label">Available Reports</div>
+                    <div class="stat-value" id="stat-available">0</div>
+                    <div class="stat-change">Unassigned high-priority</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Completed Today</div>
-                    <div class="stat-value" id="stat-completed">0</div>
-                    <div class="stat-change">Resolved reports</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Priority Tasks</div>
-                    <div class="stat-value" id="stat-priority">0</div>
-                    <div class="stat-change">High/Critical severity</div>
+                    <div class="stat-label">Crew Available</div>
+                    <div class="stat-value" id="stat-available-crew">0</div>
+                    <div class="stat-change">Members ready for tasks</div>
                 </div>
             </div>
 
-            <!-- My Active Tasks Section -->
+            <!-- Tasks Section - Crew Members -->
             <div class="reports-section">
                 <div class="section-header">
-                    <h2 class="section-title">My Active Tasks</h2>
+                    <h2 class="section-title">Tasks</h2>
                 </div>
-                <div class="reports-grid" id="assigned-reports">
-                    <!-- Assigned reports will be loaded here -->
+                <div id="crew-members-section">
+                    <!-- Crew members list will be loaded here -->
                 </div>
             </div>
 
@@ -567,6 +827,45 @@
         </div>
     </div>
 
+    <!-- Crew Member Selection Modal -->
+    <div class="modal-overlay" id="crewMemberModal" onclick="if(event.target === this) closeCrewMemberModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Select Crew Member</h2>
+                <button class="modal-close" onclick="closeCrewMemberModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="crew-member-grid" id="crewMemberGrid">
+                    <!-- Crew members will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-button secondary" onclick="closeCrewMemberModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Tasks Modal -->
+    <div class="modal-overlay" id="memberTasksModal" onclick="if(event.target === this) closeMemberTasksModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="memberTasksTitle">Member Tasks</h2>
+                <button class="modal-close" onclick="closeMemberTasksModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="memberTasksStats" style="display: flex; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+                    <!-- Stats will be loaded here -->
+                </div>
+                <div class="task-list" id="memberTasksList">
+                    <!-- Tasks will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-button secondary" onclick="closeMemberTasksModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -578,7 +877,34 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Show sidebar immediately (before auth check) - FORCE visibility
+            const sidebar = document.getElementById('mainSidebar');
+            if (sidebar) {
+                sidebar.style.display = 'flex';
+                sidebar.style.opacity = '1';
+                sidebar.style.visibility = 'visible';
+                sidebar.style.background = '#1a2332';
+                sidebar.classList.add('loaded'); // Add loaded class immediately
+            }
+            
             checkAuthStatus();
+            
+            // Ensure manager context is maintained when navigating
+            if (currentUser && (currentUser.role === 'crew' || currentUser.role === 'admin')) {
+                sessionStorage.setItem('crewDashboardType', 'manager');
+            }
+            
+            // Add click handlers to navigation links to maintain context
+            document.querySelectorAll('.nav-item[href]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Maintain manager context when navigating from crew dashboard
+                    if (currentUser && (currentUser.role === 'crew' || currentUser.role === 'admin')) {
+                        sessionStorage.setItem('crewDashboardType', 'manager');
+                        // Also set a flag to indicate we're in crew dashboard flow
+                        sessionStorage.setItem('fromCrewDashboard', 'true');
+                    }
+                });
+            });
         });
 
         // Check authentication status on page load
@@ -602,6 +928,12 @@
                     
                     currentUser = data.user;
                     currentRole = data.user.role;
+                    
+                    // Mark as manager dashboard in session
+                    if (data.user.role === 'crew') {
+                        sessionStorage.setItem('crewDashboardType', 'manager');
+                    }
+                    
                     updateUIForAuth(true, data.user);
                     
                     // Load crew reports and initialize map after auth check
@@ -610,15 +942,18 @@
                     
                     return true;
                 } else {
+                    // Guest user - show sidebar but don't load crew data
                     currentUser = null;
                     currentRole = 'guest';
-                    window.location.href = 'login.html?redirect=crew_dashboard.html';
+                    updateUIForAuth(false, null);
                     return false;
                 }
             } catch (error) {
                 console.error('Error checking auth:', error);
+                // On error, still show sidebar for guests
+                currentUser = null;
+                currentRole = 'guest';
                 updateUIForAuth(false, null);
-                window.location.href = 'login.html';
                 return false;
             }
         }
@@ -650,49 +985,63 @@
                 console.log('❌ Not authenticated (guest)');
             }
 
+            // Crew dashboard is for managers ONLY
+            const isCrewManager = true;
+            
             // Update sidebar navigation visibility based on role
             const allNavItems = document.querySelectorAll('.nav-item[data-role]');
-            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
+            console.log('📋 [Crew Dashboard] Found nav items:', allNavItems.length, 'User role:', user?.role, 'Is Manager:', isCrewManager);
             
             allNavItems.forEach(item => {
                 const requiredRole = item.getAttribute('data-role');
                 const itemName = item.querySelector('span')?.textContent || 'Unknown';
+                const itemHref = item.getAttribute('href') || '';
                 
-                // Always reset visibility
                 item.classList.remove('hidden');
                 item.style.display = '';
                 
                 let shouldShow = false;
                 
                 if (requiredRole === 'all') {
-                    // Always visible to everyone
                     shouldShow = true;
                 } else if (requiredRole === 'crew-only') {
-                    // Only visible to crew members
-                    shouldShow = (isAuthenticated && user && user.role === 'crew');
+                    // Tasks - ONLY for crew managers
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
+                } else if (requiredRole === 'crew-member') {
+                    // My Work - NEVER show for managers
+                    shouldShow = false;
                 } else if (requiredRole === 'admin') {
-                    // Visible to admin and crew (crew has admin-like privileges)
-                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                    // History, Crew Management - for admins and crew managers
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
                 } else if (requiredRole === 'user') {
-                    // Visible to users, admins, and crew
-                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    // Rankings - for users and admins only, NOT crew managers
+                    if (itemHref.includes('rankings.html')) {
+                        // Rankings - ONLY for users and actual admins, NOT crew managers
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin'));
+                    } else {
+                        // Other user role items
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    }
                 } else if (requiredRole === 'not-admin') {
-                    // Visible to guests and users, hidden from admins and crew
                     shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
                 }
                 
                 if (shouldShow) {
                     item.style.display = 'flex';
-                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
+                    console.log(`  ✓ ${itemName}: VISIBLE`);
                 } else {
                     item.style.display = 'none';
-                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
+                    console.log(`  ✗ ${itemName}: HIDDEN`);
                 }
             });
 
-            // Show sidebar after auth check complete
+            // Show sidebar after auth check complete - ensure it's always visible
             if (sidebar) {
                 sidebar.classList.add('loaded');
+                sidebar.style.display = 'flex';
+                sidebar.style.opacity = '1';
+                sidebar.style.visibility = 'visible';
+                sidebar.style.background = '#1a2332';
                 console.log('🎨 Sidebar loaded and visible');
             }
         }
@@ -702,38 +1051,361 @@
             return await checkAuthStatus();
         }
 
-        // Load crew reports
+        // Load crew reports and members (Manager view only)
         async function loadCrewReports() {
             try {
-                const response = await fetch('get_crew_reports.php', {
-                    credentials: 'include' // Include cookies for session
+                // Load crew members
+                const membersResponse = await fetch('get_crew_members.php', {
+                    credentials: 'include'
+                });
+                const membersData = await membersResponse.json();
+                
+                if (membersData.status === 'success') {
+                    renderCrewMembers(membersData.crew_members);
+                }
+                
+                // Load available unassigned reports (for assignment)
+                const reportsResponse = await fetch('get_unassigned_reports.php', {
+                    credentials: 'include'
+                });
+                const reportsData = await reportsResponse.json();
+                
+                if (reportsData.status === 'success') {
+                    crewData = { unassigned_reports: reportsData.reports || [] };
+                    renderAvailableReports(crewData.unassigned_reports);
+                    updateMapMarkers(crewData);
+                    
+                    // Update stats after loading both
+                    if (membersData.status === 'success') {
+                        updateManagerStats(membersData.crew_members);
+                    }
+                } else {
+                    // Fallback: try to get from get_crew_reports but only use unassigned
+                    const fallbackResponse = await fetch('get_crew_reports.php', {
+                        credentials: 'include'
+                    });
+                    const fallbackData = await fallbackResponse.json();
+                    if (fallbackData.status === 'success') {
+                        crewData = { unassigned_reports: fallbackData.unassigned_reports || [] };
+                        renderAvailableReports(crewData.unassigned_reports);
+                        updateMapMarkers(crewData);
+                        
+                        // Update stats after loading both
+                        if (membersData.status === 'success') {
+                            updateManagerStats(membersData.crew_members);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load crew data:', error);
+            }
+        }
+        
+        // Update stats for manager view (total crew stats, not personal)
+        function updateManagerStats(members) {
+            // Filter out current manager from members list
+            const filteredMembers = members.filter(member => {
+                return member.id !== (currentUser?.id || null);
+            });
+            
+            // Filter to only crew members (exclude admins) for available count
+            const crewOnlyMembers = filteredMembers.filter(member => member.role === 'crew');
+            
+            let totalAssigned = 0;
+            let availableCrew = 0;
+            
+            // Count assignments from all filtered members (excluding manager)
+            filteredMembers.forEach(member => {
+                totalAssigned += member.active_assignments || 0;
+            });
+            
+            // Count available crew members only (exclude admins and manager)
+            crewOnlyMembers.forEach(member => {
+                if (member.is_available) {
+                    availableCrew++;
+                }
+            });
+            
+            // Total crew members count (excluding current manager, but including admins for total count)
+            document.getElementById('stat-crew-count').textContent = filteredMembers.length;
+            document.getElementById('stat-assigned').textContent = totalAssigned;
+            document.getElementById('stat-available-crew').textContent = availableCrew;
+            
+            // Update available reports count - only CRITICAL and HIGH priority unassigned reports
+            if (crewData && crewData.unassigned_reports) {
+                const criticalHighReports = crewData.unassigned_reports.filter(report => 
+                    report.severity === 'CRITICAL' || report.severity === 'HIGH'
+                );
+                document.getElementById('stat-available').textContent = criticalHighReports.length;
+            }
+        }
+        
+        // Render crew members list
+        function renderCrewMembers(members) {
+            const container = document.getElementById('crew-members-section');
+            
+            // Filter out the current manager from the list
+            // Also filter out admins if current user is a crew manager (not admin)
+            const filteredMembers = members.filter(member => {
+                // Exclude current user
+                if (member.id === (currentUser?.id || null)) {
+                    return false;
+                }
+                // If current user is crew manager (not admin), exclude admins
+                if (currentUser && currentUser.role === 'crew' && member.role === 'admin') {
+                    return false;
+                }
+                return true;
+            });
+            
+            if (!filteredMembers || filteredMembers.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <div class="empty-state-title">No Crew Members</div>
+                        <div class="empty-state-text">Create crew members in Crew Management to assign tasks.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="reports-grid">
+                    ${filteredMembers.map(member => `
+                        <div class="report-card">
+                            <div class="report-header">
+                                <div>
+                                    <div class="report-title">${escapeHtml(member.username)}</div>
+                                    <div class="report-category">${escapeHtml(member.email)}</div>
+                                </div>
+                                <span class="severity-badge severity-${member.active_assignments > 0 ? 'high' : 'low'}">
+                                    ${member.active_assignments || 0} Tasks
+                                </span>
+                            </div>
+                            <div class="report-description">
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Active Assignments:</strong> ${member.active_assignments || 0}
+                                </div>
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Trust Score:</strong> ${member.trust_score || 0}
+                                </div>
+                                <div style="margin-bottom: 8px;">
+                                    <strong>Status:</strong> 
+                                    ${member.is_available ? 
+                                        '<span style="color: var(--accent-green);">✅ Available</span>' : 
+                                        '<span style="color: var(--accent-red);">❌ Unavailable</span>'
+                                    }
+                                    ${member.availability_status ? ` <span style="color: var(--text-muted); font-size: 12px;">(${escapeHtml(member.availability_status)})</span>` : ''}
+                                </div>
+                                ${member.availability_message ? `
+                                    <div style="margin-top: 8px; padding: 8px; background: var(--surface); border-radius: 6px; font-size: 12px; color: var(--text-secondary);">
+                                        ${escapeHtml(member.availability_message)}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="report-meta">
+                                <button class="action-button" onclick="assignTaskToMember(${member.id}, '${escapeHtml(member.username)}')" style="flex: 1; margin-right: 8px;">
+                                    Assign Task
+                                </button>
+                                <button class="action-button secondary" onclick="viewMemberTasks(${member.id}, '${escapeHtml(member.username)}')" style="flex: 1;">
+                                    View Tasks
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        // Assign task to crew member
+        function assignTaskToMember(memberId, memberName) {
+            // Show available reports for assignment
+            if (crewData && crewData.unassigned_reports && crewData.unassigned_reports.length > 0) {
+                // Show modal with available reports to select
+                showReportSelectionModal(memberId, memberName);
+            } else {
+                alert('No available high-priority reports to assign. Check the "Available High-Priority Reports" section below.');
+            }
+        }
+
+        // Show report selection modal for assigning to specific member
+        async function showReportSelectionModal(memberId, memberName) {
+            const modal = document.getElementById('crewMemberModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const grid = document.getElementById('crewMemberGrid');
+            
+            modalTitle.textContent = `Select Report to Assign to ${memberName}`;
+            
+            if (crewData && crewData.unassigned_reports && crewData.unassigned_reports.length > 0) {
+                grid.innerHTML = crewData.unassigned_reports.map(report => `
+                    <div class="crew-member-card" onclick="selectReportForMember(${report.id}, '${report.report_type}', ${memberId}, '${escapeHtml(memberName)}')">
+                        <div class="crew-member-name">${escapeHtml(report.title || 'Untitled Report')}</div>
+                        <div class="crew-member-email">${escapeHtml(report.category || 'General')}</div>
+                        <div class="crew-member-stats">
+                            <span class="crew-member-stat-label">Severity:</span>
+                            <span class="crew-member-stat-value severity-badge severity-${(report.severity || 'medium').toLowerCase()}">${report.severity || 'MEDIUM'}</span>
+                        </div>
+                        <div class="crew-member-stats">
+                            <span class="crew-member-stat-label">Status:</span>
+                            <span class="crew-member-stat-value">${formatStatus(report.status)}</span>
+                        </div>
+                    </div>
+                `).join('');
+                
+                modal.classList.add('active');
+            } else {
+                grid.innerHTML = '<div class="empty-state"><div class="empty-state-text">No available reports</div></div>';
+                modal.classList.add('active');
+            }
+        }
+
+        // Select report and assign to member
+        async function selectReportForMember(reportId, reportType, memberId, memberName) {
+            if (confirm(`Assign this report to ${memberName}?`)) {
+                await assignReportToMember(reportId, reportType, memberId);
+                closeCrewMemberModal();
+            }
+        }
+        
+        // Assign report to member via API
+        async function assignReportToMember(reportId, reportType, memberId) {
+            try {
+                const response = await fetch('update_assignment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        report_id: parseInt(reportId),
+                        report_type: reportType,
+                        assigned_to_user_id: memberId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    alert('Task assigned successfully!');
+                    loadCrewReports(); // Reload data
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to assign task'));
+                }
+            } catch (error) {
+                console.error('Error assigning task:', error);
+                alert('Error: Failed to assign task');
+            }
+        }
+        
+        // View member's tasks in modal
+        async function viewMemberTasks(memberId, memberName) {
+            const modal = document.getElementById('memberTasksModal');
+            const title = document.getElementById('memberTasksTitle');
+            const statsContainer = document.getElementById('memberTasksStats');
+            const tasksList = document.getElementById('memberTasksList');
+            
+            title.textContent = `${memberName}'s Tasks`;
+            statsContainer.innerHTML = '<div style="color: var(--text-muted);">Loading...</div>';
+            tasksList.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading tasks...</div>';
+            
+            modal.classList.add('active');
+            
+            try {
+                const response = await fetch(`get_member_tasks.php?member_id=${memberId}`, {
+                    credentials: 'include'
                 });
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    crewData = data;
-                    updateStats(data);
-                    renderAssignedReports(data.assigned_reports);
-                    renderAvailableReports(data.unassigned_reports);
-                    updateMapMarkers(data);
+                    // Display stats
+                    const stats = data.status_counts || {};
+                    statsContainer.innerHTML = `
+                        <div class="task-stat">
+                            <div class="task-stat-value">${data.total_tasks || 0}</div>
+                            <div class="task-stat-label">Total Tasks</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-yellow);">${stats.pending || 0}</div>
+                            <div class="task-stat-label">Pending</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-blue);">${stats.in_progress || 0}</div>
+                            <div class="task-stat-label">In Progress</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-green);">${stats.solved || 0}</div>
+                            <div class="task-stat-label">Solved</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-cyan);">${stats.verified || 0}</div>
+                            <div class="task-stat-label">Verified</div>
+                        </div>
+                    `;
+                    
+                    // Display tasks
+                    if (data.tasks && data.tasks.length > 0) {
+                        tasksList.innerHTML = data.tasks.map(task => `
+                            <div class="task-item">
+                                <div class="task-header">
+                                    <div class="task-title">${escapeHtml(task.title || 'Untitled Task')}</div>
+                                    <span class="severity-badge severity-${(task.severity || 'medium').toLowerCase()}">
+                                        ${task.severity || 'MEDIUM'}
+                                    </span>
+                                </div>
+                                <div class="task-meta">
+                                    <span>${escapeHtml(task.category || 'General')}</span>
+                                    <span>•</span>
+                                    <span class="report-status status-${task.status}">${formatStatus(task.status)}</span>
+                                    <span>•</span>
+                                    <span>${formatTime(task.created_at || task.timestamp)}</span>
+                                </div>
+                                ${task.description ? `
+                                    <div class="task-description">${escapeHtml(task.description)}</div>
+                                ` : ''}
+                                ${task.address ? `
+                                    <div class="task-meta" style="margin-top: 8px;">
+                                        <span>📍 ${escapeHtml(task.address)}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        tasksList.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">✅</div>
+                                <div class="empty-state-title">No Tasks Assigned</div>
+                                <div class="empty-state-text">This crew member has no assigned tasks.</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    statsContainer.innerHTML = '';
+                    tasksList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <div class="empty-state-title">Error Loading Tasks</div>
+                            <div class="empty-state-text">${escapeHtml(data.message || 'Failed to load tasks')}</div>
+                        </div>
+                    `;
                 }
             } catch (error) {
-                console.error('Failed to load crew reports:', error);
+                console.error('Error loading member tasks:', error);
+                statsContainer.innerHTML = '';
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <div class="empty-state-title">Error Loading Tasks</div>
+                        <div class="empty-state-text">Please try again later.</div>
+                    </div>
+                `;
             }
         }
 
-        // Update stats
-        function updateStats(data) {
-            document.getElementById('stat-assigned').textContent = data.total_assigned;
-            document.getElementById('stat-in-progress').textContent = data.status_counts.in_progress || 0;
-            document.getElementById('stat-completed').textContent = data.status_counts.solved || 0;
-            
-            // Count priority tasks (HIGH and CRITICAL)
-            const priorityCount = data.assigned_reports.filter(r => 
-                r.severity === 'HIGH' || r.severity === 'CRITICAL'
-            ).length;
-            document.getElementById('stat-priority').textContent = priorityCount;
+        // Close member tasks modal
+        function closeMemberTasksModal() {
+            const modal = document.getElementById('memberTasksModal');
+            modal.classList.remove('active');
         }
+
+        // Update stats - REMOVED (using updateManagerStats instead)
 
         // Render assigned reports
         function renderAssignedReports(reports) {
@@ -786,7 +1458,7 @@
             }
             
             container.innerHTML = reports.slice(0, 6).map(report => `
-                <div class="report-card" onclick="viewReportDetails(${report.id}, '${report.report_type}')">
+                <div class="report-card">
                     <div class="report-header">
                         <div>
                             <div class="report-title">${escapeHtml(report.title)}</div>
@@ -801,8 +1473,121 @@
                         <span class="report-status status-${report.status}">${formatStatus(report.status)}</span>
                         <span class="report-time">${formatTime(report.created_at)}</span>
                     </div>
+                    <div style="margin-top: 12px; display: flex; gap: 8px;">
+                        <button class="action-button" onclick="assignAvailableReport(${report.id}, '${report.report_type}')" style="flex: 1;">
+                            Assign to Crew
+                        </button>
+                        <button class="action-button secondary" onclick="viewReportDetails(${report.id}, '${report.report_type}')" style="flex: 1;">
+                            View Details
+                        </button>
+                    </div>
                 </div>
             `).join('');
+        }
+        
+        // Modal state
+        let currentReportId = null;
+        let currentReportType = null;
+        let currentMemberId = null;
+
+        // Show crew member selection modal
+        async function showCrewMemberModal(reportId, reportType, memberId = null) {
+            currentReportId = reportId;
+            currentReportType = reportType;
+            currentMemberId = memberId;
+            
+            const modal = document.getElementById('crewMemberModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const grid = document.getElementById('crewMemberGrid');
+            
+            if (memberId) {
+                modalTitle.textContent = `Assign Task to ${memberId ? 'Selected Member' : 'Crew Member'}`;
+            } else {
+                modalTitle.textContent = 'Select Crew Member to Assign Task';
+            }
+            
+            // Load crew members
+            try {
+                const response = await fetch('get_crew_members.php', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.crew_members.length > 0) {
+                    // Filter out current manager and admins (if current user is crew manager)
+                    const filteredMembers = data.crew_members.filter(m => {
+                        // Exclude current user
+                        if (m.id === (currentUser?.id || null)) {
+                            return false;
+                        }
+                        // If current user is crew manager (not admin), exclude admins
+                        if (currentUser && currentUser.role === 'crew' && m.role === 'admin') {
+                            return false;
+                        }
+                        return true;
+                    });
+                    
+                    if (filteredMembers.length === 0) {
+                        grid.innerHTML = '<div class="empty-state"><div class="empty-state-text">No crew members available</div></div>';
+                        modal.classList.add('active');
+                        return;
+                    }
+                    
+                    grid.innerHTML = filteredMembers.map(member => `
+                        <div class="crew-member-card" onclick="selectCrewMember(${member.id}, '${escapeHtml(member.username)}')">
+                            <div class="crew-member-name">${escapeHtml(member.username)}</div>
+                            <div class="crew-member-email">${escapeHtml(member.email)}</div>
+                            <div class="crew-member-stats">
+                                <span class="crew-member-stat-label">Active Tasks:</span>
+                                <span class="crew-member-stat-value">${member.active_assignments || 0}</span>
+                            </div>
+                            <div class="crew-member-stats">
+                                <span class="crew-member-stat-label">Trust Score:</span>
+                                <span class="crew-member-stat-value">${member.trust_score || 0}</span>
+                            </div>
+                            <div class="crew-member-status ${member.is_available ? 'available' : 'unavailable'}">
+                                ${member.is_available ? '✅ Available' : '❌ Unavailable'}
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    modal.classList.add('active');
+                } else {
+                    grid.innerHTML = '<div class="empty-state"><div class="empty-state-text">No crew members available. Create crew members first.</div></div>';
+                    modal.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error loading crew members:', error);
+                grid.innerHTML = '<div class="empty-state"><div class="empty-state-text">Error loading crew members</div></div>';
+                modal.classList.add('active');
+            }
+        }
+
+        // Close crew member modal
+        function closeCrewMemberModal() {
+            const modal = document.getElementById('crewMemberModal');
+            modal.classList.remove('active');
+            currentReportId = null;
+            currentReportType = null;
+            currentMemberId = null;
+        }
+
+        // Select crew member and assign
+        async function selectCrewMember(memberId, memberName) {
+            if (!currentReportId || !currentReportType) {
+                alert('Error: Report information missing');
+                return;
+            }
+            
+            if (confirm(`Assign this task to ${memberName}?`)) {
+                await assignReportToMember(currentReportId, currentReportType, memberId);
+                closeCrewMemberModal();
+            }
+        }
+
+        // Assign available report
+        async function assignAvailableReport(reportId, reportType) {
+            await showCrewMemberModal(reportId, reportType);
         }
 
         // Initialize map
@@ -814,20 +1599,20 @@
             }).addTo(crewMap);
         }
 
-        // Update map markers
+        // Update map markers (only unassigned reports for manager view)
         function updateMapMarkers(data) {
             if (!crewMap) return;
             
             // Clear existing markers
             crewMap.eachLayer(layer => {
-                if (layer instanceof L.Marker) {
+                if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
                     crewMap.removeLayer(layer);
                 }
             });
             
-            const allReports = [...data.assigned_reports, ...data.unassigned_reports];
+            const reports = data.unassigned_reports || [];
             
-            allReports.forEach(report => {
+            reports.forEach(report => {
                 if (report.latitude && report.longitude) {
                     const markerColor = getSeverityColor(report.severity);
                     const marker = L.circleMarker([report.latitude, report.longitude], {
@@ -843,15 +1628,16 @@
                         <b>${escapeHtml(report.title)}</b><br>
                         ${report.category || 'General'}<br>
                         Severity: ${report.severity}<br>
-                        Status: ${formatStatus(report.status)}
+                        Status: ${formatStatus(report.status)}<br>
+                        <small>Unassigned</small>
                     `);
                 }
             });
             
             // Fit bounds if there are reports
-            if (allReports.length > 0) {
+            if (reports.length > 0) {
                 const bounds = L.latLngBounds(
-                    allReports
+                    reports
                         .filter(r => r.latitude && r.longitude)
                         .map(r => [r.latitude, r.longitude])
                 );

@@ -1900,7 +1900,11 @@
             <nav class="sidebar-nav">
                 <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
                     <div class="nav-icon">C</div>
-                    <span>My Tasks</span>
+                    <span>Tasks</span>
+                </a>
+                <a href="crew_member_dashboard.html" class="nav-item" id="navCrewMemberDashboard" data-role="crew-member" style="display:none;">
+                    <div class="nav-icon">W</div>
+                    <span>My Work</span>
                 </a>
                 <a href="index.html" class="nav-item active" data-role="not-admin">
                     <div class="nav-icon">M</div>
@@ -1913,6 +1917,10 @@
                 <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
                     <div class="nav-icon">G</div>
                     <span>General</span>
+                </a>
+                <a href="crew_management.html" class="nav-item" id="navCrewManagement" data-role="admin" style="display:none;">
+                    <div class="nav-icon">👥</div>
+                    <span>Crew Management</span>
                 </a>
                 <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
                     <div class="nav-icon">H</div>
@@ -4503,6 +4511,19 @@
             const allNavItems = document.querySelectorAll('.nav-item[data-role]');
             console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
             
+            // Determine crew manager status FIRST (outside the loop)
+            let isCrewManager = false;
+            if (isAuthenticated && user && user.role === 'crew') {
+                const dashboardType = sessionStorage.getItem('crewDashboardType');
+                isCrewManager = dashboardType !== 'member'; // Default to manager if not set
+                if (!dashboardType) {
+                    sessionStorage.setItem('crewDashboardType', 'manager');
+                    isCrewManager = true;
+                }
+            } else if (isAuthenticated && user && user.role === 'admin') {
+                isCrewManager = true;
+            }
+            
             allNavItems.forEach(item => {
                 const requiredRole = item.getAttribute('data-role');
                 const itemName = item.querySelector('span')?.textContent || 'Unknown';
@@ -4517,17 +4538,26 @@
                     // Always visible to everyone
                     shouldShow = true;
                 } else if (requiredRole === 'crew-only') {
-                    // Only visible to crew members
-                    shouldShow = (isAuthenticated && user && user.role === 'crew');
+                    // Tasks - ONLY for crew managers
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
+                } else if (requiredRole === 'crew-member') {
+                    // My Work - ONLY for crew members (NOT managers)
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && !isCrewManager);
                 } else if (requiredRole === 'admin') {
-                    // Visible to admin and crew (crew has admin-like privileges)
-                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                    // History, Crew Management - for admins and crew managers ONLY
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
                 } else if (requiredRole === 'user') {
-                    // Visible to users, admins, and crew
-                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    // Rankings - for users and admins only, NOT crew managers
+                    if (item.getAttribute('href') && item.getAttribute('href').includes('rankings.html')) {
+                        // Rankings - ONLY for users and actual admins, NOT crew managers
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin'));
+                    } else {
+                        // Other user role items
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    }
                 } else if (requiredRole === 'not-admin') {
-                    // Visible to guests and users, hidden from admins and crew
-                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                    // Monitor - hidden from admins and crew managers
+                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && !(user.role === 'crew' && isCrewManager)));
                 }
                 
                 if (shouldShow) {

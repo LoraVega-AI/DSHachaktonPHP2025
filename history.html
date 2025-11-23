@@ -648,7 +648,11 @@
             <nav class="sidebar-nav">
                 <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
                     <div class="nav-icon">C</div>
-                    <span>My Tasks</span>
+                    <span>Tasks</span>
+                </a>
+                <a href="crew_member_dashboard.html" class="nav-item" id="navCrewMemberDashboard" data-role="crew-member" style="display:none;">
+                    <div class="nav-icon">W</div>
+                    <span>My Work</span>
                 </a>
                 <a href="index.html" class="nav-item" data-role="not-admin">
                     <div class="nav-icon">M</div>
@@ -661,6 +665,10 @@
                 <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
                     <div class="nav-icon">G</div>
                     <span>General</span>
+                </a>
+                <a href="crew_management.html" class="nav-item" id="navCrewManagement" data-role="admin" style="display:none;">
+                    <div class="nav-icon">👥</div>
+                    <span>Crew Management</span>
                 </a>
                 <a href="history.html" class="nav-item active" id="navHistory" data-role="admin">
                     <div class="nav-icon">H</div>
@@ -837,43 +845,68 @@
                 console.log('❌ Not authenticated (guest)');
             }
 
+            // History page is for managers ONLY
+            let isCrewManager = false;
+            if (isAuthenticated && user && user.role === 'crew') {
+                sessionStorage.setItem('crewDashboardType', 'manager');
+                sessionStorage.setItem('fromCrewDashboard', 'true');
+                isCrewManager = true;
+            } else if (isAuthenticated && user && user.role === 'admin') {
+                isCrewManager = true;
+            }
+            
+            console.log('📜 [History] Crew Manager Status:', isCrewManager);
+
             // Update sidebar navigation visibility based on role
             const allNavItems = document.querySelectorAll('.nav-item[data-role]');
-            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
+            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role, 'Is Manager:', isCrewManager);
             
             allNavItems.forEach(item => {
                 const requiredRole = item.getAttribute('data-role');
                 const itemName = item.querySelector('span')?.textContent || 'Unknown';
+                const itemHref = item.getAttribute('href') || '';
                 
-                // Always reset visibility
                 item.classList.remove('hidden');
                 item.style.display = '';
                 
                 let shouldShow = false;
                 
                 if (requiredRole === 'all') {
-                    // Always visible to everyone
                     shouldShow = true;
                 } else if (requiredRole === 'crew-only') {
-                    // Only visible to crew members
-                    shouldShow = (isAuthenticated && user && user.role === 'crew');
+                    // Tasks - ONLY for crew managers
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
+                } else if (requiredRole === 'crew-member') {
+                    // My Work - NEVER show for managers
+                    shouldShow = false;
                 } else if (requiredRole === 'admin') {
-                    // Visible to admin and crew (crew has admin-like privileges)
-                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                    // Check if this is the General link - it should ONLY be shown to actual admins, not crew managers
+                    if (itemHref.includes('general.html')) {
+                        // General - ONLY for actual admins, NOT crew managers
+                        shouldShow = (isAuthenticated && user && user.role === 'admin');
+                    } else {
+                        // History, Crew Management - for admins and crew managers
+                        shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
+                    }
                 } else if (requiredRole === 'user') {
-                    // Visible to users, admins, and crew
-                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    // Rankings - for users and admins only, NOT crew managers
+                    if (itemHref.includes('rankings.html')) {
+                        // Rankings - ONLY for users and actual admins, NOT crew managers
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin'));
+                    } else {
+                        // Other user role items
+                        shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                    }
                 } else if (requiredRole === 'not-admin') {
-                    // Visible to guests and users, hidden from admins and crew
                     shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
                 }
                 
                 if (shouldShow) {
                     item.style.display = 'flex';
-                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
+                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'} (Manager: ${isCrewManager})`);
                 } else {
                     item.style.display = 'none';
-                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
+                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'} (Manager: ${isCrewManager})`);
                 }
             });
 
@@ -915,6 +948,17 @@
             const isAuth = await checkAuthStatus();
             if (!isAuth) return;
             loadAllDetections();
+            
+            // Add click handlers to navigation links to maintain manager context
+            document.querySelectorAll('.nav-item[href]').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Maintain manager context when navigating from history page
+                    const dashboardType = sessionStorage.getItem('crewDashboardType');
+                    if (dashboardType === 'manager') {
+                        sessionStorage.setItem('fromCrewDashboard', 'true');
+                    }
+                });
+            });
         });
 
         async function loadAllDetections() {
@@ -1190,9 +1234,9 @@
                     <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.5;">
                         ${escapeHtml(truncateText(report.classification || report.executive_conclusion || 'No description available', 120))}
                     </div>
-                    ${(report.status === 'solved' || report.status === 'pending') ? `
+                    ${(report.status === 'solved' || report.status === 'pending' || report.status === 'in_progress') ? `
                     <div class="card-actions" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); display: flex; gap: 8px; flex-wrap: wrap;">
-                        ${report.status === 'pending' && currentRole === 'admin' ? `
+                        ${(report.status === 'pending' || report.status === 'in_progress') && (currentRole === 'admin' || currentRole === 'crew') ? `
                         <button class="action-btn solve-btn" onclick="markAsSolved(${report.id}, '${report.report_type || 'analysis'}')" style="flex: 1; min-width: 100px; padding: 8px 16px; font-size: 12px; background: var(--accent-blue); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                             Mark Solved
                         </button>

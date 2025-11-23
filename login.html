@@ -318,8 +318,12 @@
                     <div class="demo-credentials">john_doe / john123</div>
                 </div>
                 <div class="demo-account" onclick="loginDemo('crew_demo', 'crew123')">
-                    <div class="demo-role">🔧 Crew Account</div>
+                    <div class="demo-role">🔧 Crew Member</div>
                     <div class="demo-credentials">crew_demo / crew123</div>
+                </div>
+                <div class="demo-account" onclick="loginDemo('alex_tech', 'alex123')">
+                    <div class="demo-role">🔧 Crew Member</div>
+                    <div class="demo-credentials">alex_tech / alex123</div>
                 </div>
             </div>
 
@@ -361,7 +365,13 @@
                         if (data.user && data.user.role === 'admin') {
                             window.location.href = 'general.html';
                         } else if (data.user && data.user.role === 'crew') {
-                            window.location.href = 'crew_dashboard.html';
+                            // Check if this is a crew member (not manager) - alex_tech goes to member dashboard
+                            if (data.user.username === 'alex_tech') {
+                                window.location.href = 'crew_member_dashboard.html';
+                            } else {
+                                // Other crew users (like crew_demo) go to manager dashboard
+                                window.location.href = 'crew_dashboard.html';
+                            }
                         } else {
                             window.location.href = 'index.html';
                         }

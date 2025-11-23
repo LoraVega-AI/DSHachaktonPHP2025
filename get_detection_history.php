@@ -166,8 +166,9 @@ try {
     $where_general = "1=1";
     $params = [];
     
-    // If user is not admin, filter by their user_id
-    if ($userRole !== 'admin' && $currentUserId !== null) {
+    // If user is not admin or crew, filter by their user_id
+    // Crew managers should see all reports like admins
+    if ($userRole !== 'admin' && $userRole !== 'crew' && $currentUserId !== null) {
         if ($hasAnalysisUserId) {
             $where_analysis .= " AND ar.user_id = :user_id_analysis";
             $params[':user_id_analysis'] = $currentUserId;

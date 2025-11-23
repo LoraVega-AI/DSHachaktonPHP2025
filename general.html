@@ -506,7 +506,11 @@
             <nav class="sidebar-nav">
                 <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
                     <div class="nav-icon">C</div>
-                    <span>My Tasks</span>
+                    <span>Tasks</span>
+                </a>
+                <a href="crew_member_dashboard.html" class="nav-item" id="navCrewMemberDashboard" data-role="crew-member" style="display:none;">
+                    <div class="nav-icon">W</div>
+                    <span>My Work</span>
                 </a>
                 <a href="general.html" class="nav-item active" id="navGeneral" data-role="admin">
                     <div class="nav-icon">G</div>
@@ -515,6 +519,10 @@
                 <a href="map.html" class="nav-item" data-role="all">
                     <div class="nav-icon">P</div>
                     <span>Map</span>
+                </a>
+                <a href="crew_management.html" class="nav-item" id="navCrewManagement" data-role="admin" style="display:none;">
+                    <div class="nav-icon">👥</div>
+                    <span>Crew Management</span>
                 </a>
                 <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
                     <div class="nav-icon">H</div>
@@ -825,8 +833,29 @@
                     // Visible to users, admins, and crew
                     shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
                 } else if (requiredRole === 'not-admin') {
-                    // Visible to guests and users, hidden from admins and crew
                     shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                // Determine crew manager status
+                let isCrewManager = false;
+                if (isAuthenticated && user && user.role === 'crew') {
+                    const dashboardType = sessionStorage.getItem('crewDashboardType');
+                    isCrewManager = dashboardType !== 'member';
+                    if (!dashboardType) {
+                        sessionStorage.setItem('crewDashboardType', 'manager');
+                        isCrewManager = true;
+                    }
+                } else if (isAuthenticated && user && user.role === 'admin') {
+                    isCrewManager = true;
+                }
+                
+                if (requiredRole === 'crew-only') {
+                    // Tasks - ONLY for crew managers
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
+                } else if (requiredRole === 'crew-member') {
+                    // My Work - ONLY for crew members (NOT managers)
+                    shouldShow = (isAuthenticated && user && user.role === 'crew' && !isCrewManager);
+                } else if (requiredRole === 'admin') {
+                    // History, Crew Management - for admins and crew managers ONLY
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
                 }
                 
                 if (shouldShow) {
