@@ -3213,7 +3213,21 @@
 
         // Aggregate audio data from frames (similar to classifier.js)
         function aggregateAudioDataFromFrames(audioFrames) {
-            if (audioFrames.length === 0) return {};
+            // Always return all required fields, even if empty
+            if (audioFrames.length === 0) {
+                return {
+                    top_hazard: 'Insufficient Audio Data',
+                    confidence_score: 0.1,
+                    mfcc_array: [],
+                    rms_level: 0.001,
+                    timestamp: new Date().toISOString(),
+                    max_rms: 0.001,
+                    active_frames: 0,
+                    total_frames: 0,
+                    signal_consistency: 0.1,
+                    audio_source: 'Uploaded File'
+                };
+            }
 
             const validFrames = audioFrames.filter(frame => frame.rms >= 0.005);
             if (validFrames.length < 2) {
@@ -3222,7 +3236,12 @@
                     confidence_score: 0.1,
                     mfcc_array: [],
                     rms_level: 0.001,
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    max_rms: 0.001,
+                    active_frames: validFrames.length,
+                    total_frames: audioFrames.length,
+                    signal_consistency: 0.1,
+                    audio_source: 'Uploaded File'
                 };
             }
 
@@ -3266,16 +3285,22 @@
             // Classify audio characteristics (simplified)
             const primaryHazard = classifyAudioFromRMS(avgRMS, maxRMS);
 
+            // Ensure all required fields are present and valid
+            const confidence = Math.min(Math.max((avgRMS * 2 + validFrames.length / audioFrames.length) / 3, 0.1), 1);
+            const mfccArray = Array.isArray(mfccFeatures) && mfccFeatures.length > 0 ? mfccFeatures : Array(13).fill(0);
+            
             return {
-                top_hazard: primaryHazard,
-                confidence_score: Math.min((avgRMS * 2 + validFrames.length / audioFrames.length) / 3, 1),
-                mfcc_array: mfccFeatures,
-                rms_level: avgRMS,
-                max_rms: maxRMS,
+                top_hazard: primaryHazard || 'Unknown acoustic event',
+                confidence_score: confidence,
+                mfcc_array: mfccArray,
+                rms_level: Math.max(avgRMS, 0.001),
+                max_rms: Math.max(maxRMS, 0.001),
                 active_frames: validFrames.length,
                 total_frames: audioFrames.length,
                 timestamp: new Date().toISOString(),
-                audio_source: 'Uploaded File'
+                audio_source: 'Uploaded File',
+                signal_consistency: Math.min(validFrames.length / audioFrames.length, 1),
+                analysis_period_seconds: Math.round(audioFrames.length * 2048 / 16000) // Approximate seconds
             };
         }
 
@@ -3337,13 +3362,28 @@
 
                 console.log('📥 Received response. Status:', response.status);
 
+                // Check if response is OK first
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ Server error:', response.status, errorText.substring(0, 500));
+                    throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}`);
+                }
+
                 const responseText = await response.text();
+                
+                // Check if response is empty
+                if (!responseText || responseText.trim().length === 0) {
+                    console.error('❌ Empty response from server');
+                    throw new Error('Server returned empty response');
+                }
+                
                 let result;
                 try {
                     result = JSON.parse(responseText);
                 } catch (jsonError) {
                     console.error('❌ Invalid JSON response:', responseText.substring(0, 500));
-                    throw new Error('Server returned invalid JSON response');
+                    console.error('❌ JSON parse error:', jsonError.message);
+                    throw new Error('Server returned invalid JSON response: ' + jsonError.message);
                 }
 
                 if (result.status === 'success') {

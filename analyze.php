@@ -4,13 +4,45 @@
 // Start output buffering to prevent warnings from breaking JSON
 ob_start();
 
-// Suppress warnings to prevent breaking JSON output
-error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE);
+// Enable error reporting for debugging (log errors but don't display)
+error_reporting(E_ALL);
 ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/php_errors.log');
+
+// Register shutdown function to catch fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== NULL && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        http_response_code(500);
+        header("Content-Type: application/json; charset=UTF-8");
+        ob_clean();
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Internal server error: ' . $error['message'],
+            'file' => $error['file'],
+            'line' => $error['line']
+        ], JSON_PRETTY_PRINT);
+        error_log("FATAL ERROR in analyze.php: " . $error['message'] . " in " . $error['file'] . " on line " . $error['line']);
+        exit;
+    }
+});
 
 // Include database configuration and auth functions
-require_once __DIR__ . '/db_config.php';
-require_once __DIR__ . '/auth.php';
+try {
+    require_once __DIR__ . '/db_config.php';
+    require_once __DIR__ . '/auth.php';
+} catch (Exception $e) {
+    http_response_code(500);
+    header("Content-Type: application/json; charset=UTF-8");
+    ob_clean();
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Failed to load required files: ' . $e->getMessage()
+    ], JSON_PRETTY_PRINT);
+    error_log("Error loading required files: " . $e->getMessage());
+    exit;
+}
 
 // API Configuration - Now using Groq
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
@@ -43,11 +75,12 @@ function loadEnv($path) {
 
 // Simple API test endpoint - Now using Groq
 if (isset($_GET['test']) && $_GET['test'] === 'llm') {
-    header("Content-Type: application/json");
+    try {
+        header("Content-Type: application/json");
 
-    // Load environment variables
-    $env = loadEnv(__DIR__ . '/.env');
-    $groq_api_key = $env['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY');
+        // Load environment variables
+        $env = loadEnv(__DIR__ . '/.env');
+        $groq_api_key = $env['GROQ_API_KEY'] ?? getenv('GROQ_API_KEY');
 
     if (!$groq_api_key) {
         echo json_encode(["error" => "No Groq API key found"]);
@@ -99,15 +132,29 @@ if (isset($_GET['test']) && $_GET['test'] === 'llm') {
         "model_used" => GROQ_MODEL,
         "response_preview" => substr($response, 0, 100) . "..."
     ], JSON_PRETTY_PRINT);
+    } catch (Exception $e) {
+        http_response_code(500);
+        header("Content-Type: application/json");
+        ob_clean();
+        echo json_encode([
+            'status' => 'error',
+            'message' => 'Test endpoint error: ' . $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ], JSON_PRETTY_PRINT);
+        error_log("Test endpoint error: " . $e->getMessage());
+    }
     exit;
 }
 
-// CORS Headers
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Max-Age: 3600");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+// CORS Headers (only set if not already sent)
+if (!headers_sent()) {
+    header("Access-Control-Allow-Origin: *");
+    header("Content-Type: application/json; charset=UTF-8");
+    header("Access-Control-Allow-Methods: POST");
+    header("Access-Control-Max-Age: 3600");
+    header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+}
 
 // Load environment variables from .env file
 $env = loadEnv(__DIR__ . '/.env');
@@ -238,10 +285,17 @@ $technical_insights = [
 // Ensure we always return valid JSON
 try {
     // Clear any output that might have been generated (warnings, etc.)
-    ob_clean();
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
     
     // 1. Read Raw Input
     $json_data = file_get_contents('php://input');
+    
+    // Check if we got any data
+    if (empty($json_data)) {
+        throw new Exception("No input data received");
+    }
 
     // 2. Decode JSON
     $data = json_decode($json_data, true);
@@ -274,11 +328,25 @@ foreach ($required_fields as $field) {
 
 if (!empty($missing_fields)) {
     http_response_code(400);
+    ob_clean();
     echo json_encode([
         "status" => "error",
-        "message" => "Missing required fields: " . implode(', ', $missing_fields)
-    ]);
+        "message" => "Missing required fields: " . implode(', ', $missing_fields),
+        "received_fields" => array_keys($data)
+    ], JSON_PRETTY_PRINT);
     exit;
+}
+
+// Ensure mfcc_array is an array (not null or empty string)
+if (!is_array($data['mfcc_array'])) {
+    $data['mfcc_array'] = [];
+}
+
+// Ensure numeric fields are valid
+$data['confidence_score'] = floatval($data['confidence_score'] ?? 0.5);
+$data['rms_level'] = floatval($data['rms_level'] ?? 0.1);
+if (empty($data['timestamp'])) {
+    $data['timestamp'] = date('c');
 }
 
 // Try to use Groq API with comprehensive audio analysis - NOW WITH ACTUAL DATA
@@ -436,7 +504,7 @@ INSTRUCTIONS:
   * Signal quality and consistency from the data
   * How well the acoustic pattern matches known signatures
   * The clarity and strength of the detection
-  * Use the "Confidence Score" from the data as a baseline, but adjust based on your analysis
+  * Use the \"Confidence Score\" from the data as a baseline, but adjust based on your analysis
   * Be realistic: Low confidence (20-50) if signal is weak or ambiguous, Medium (50-75) if reasonably certain, High (75-95) if very confident
   * If you're completely uncertain but have some signal, use 10-20. NEVER use 0.
 - VALIDATION: Before returning JSON, verify confidence_score is a number between 10-100. If you cannot determine confidence, use 30 as a conservative estimate, never 0.
@@ -681,61 +749,77 @@ if ($http_code !== 200) {
     // 10. Save to Database
     error_log("💾 Attempting to save AI-generated report to database...");
     $saveResult = saveAnalysisReport($transformed_diagnosis, $data, $category);
+    $reportId = null;
     
-    if ($saveResult) {
-        error_log("✅ AI report successfully saved to database with full AI-generated content");
-        
-        $reportId = $pdo->lastInsertId();
-        
-        // Validate report for cross-modal correlation (with error handling)
-        try {
-            if ($latitude !== null && $longitude !== null) {
-                require_once __DIR__ . '/validate_reports.php';
-                if (function_exists('validateReport')) {
-                    $validationResult = validateReport($reportId, 'analysis');
-                    if ($validationResult['status'] === 'validated') {
-                        error_log("✅ Cross-modal validation: Report #$reportId validated with " . count($validationResult['correlations']) . " correlations");
-                    }
-                }
-            }
-        } catch (Exception $validationError) {
-            error_log("⚠️ Validation error (non-fatal): " . $validationError->getMessage());
-            // Continue even if validation fails
-        }
-        
-        // Attempt triangulation for acoustic source localization (with error handling)
-        try {
-            require_once __DIR__ . '/triangulate_source.php';
-            if (function_exists('triangulateSource')) {
-                $triangulationResult = triangulateSource($reportId);
-                if ($triangulationResult['status'] === 'triangulated') {
-                    error_log("✅ Triangulation: Report #$reportId part of cluster #" . $triangulationResult['cluster_id'] . 
-                             " with " . $triangulationResult['report_count'] . " reports");
-                }
-            }
-        } catch (Exception $triangulationError) {
-            error_log("⚠️ Triangulation error (non-fatal): " . $triangulationError->getMessage());
-            // Continue even if triangulation fails
-        }
-        
-        // Check proximity alerts (with error handling)
-        try {
-            if ($latitude !== null && $longitude !== null) {
-                require_once __DIR__ . '/check_proximity_alerts.php';
-                if (function_exists('checkProximityAlerts')) {
-                    $alertResult = checkProximityAlerts($reportId, 'analysis', $latitude, $longitude, $severity);
-                    if ($alertResult['alerts_triggered'] > 0) {
-                        error_log("🔔 Proximity alerts: " . $alertResult['alerts_triggered'] . " users notified");
-                    }
-                }
-            }
-        } catch (Exception $alertError) {
-            error_log("⚠️ Proximity alert error (non-fatal): " . $alertError->getMessage());
-            // Continue even if alerts fail
-        }
+    if ($saveResult && is_array($saveResult) && isset($saveResult['report_id'])) {
+        $reportId = $saveResult['report_id'];
+        error_log("✅ AI report successfully saved to database with full AI-generated content (ID: $reportId)");
+    } elseif ($saveResult) {
+        error_log("✅ AI report successfully saved to database (report ID not available)");
     } else {
         error_log("❌ WARNING: Failed to save AI report to database, but continuing with response");
     }
+    
+    // Validate report for cross-modal correlation (with error handling)
+    if ($reportId) {
+            // Extract location from original data (define outside try blocks for scope)
+            $latitude = isset($data['latitude']) && $data['latitude'] !== null && $data['latitude'] !== '' ? floatval($data['latitude']) : null;
+            $longitude = isset($data['longitude']) && $data['longitude'] !== null && $data['longitude'] !== '' ? floatval($data['longitude']) : null;
+            $severity = $transformed_diagnosis['risk_assessment']['severity'] ?? 'LOW';
+            
+            try {
+                // Only validate if we have a valid report ID and location data
+                if ($reportId && $reportId > 0 && $latitude !== null && $longitude !== null) {
+                    require_once __DIR__ . '/validate_reports.php';
+                    if (function_exists('validateReport')) {
+                        $validationResult = validateReport($reportId, 'analysis');
+                        if ($validationResult && isset($validationResult['status'])) {
+                            if ($validationResult['status'] === 'validated') {
+                                error_log("✅ Cross-modal validation: Report #$reportId validated with " . count($validationResult['correlations']) . " correlations");
+                            } elseif ($validationResult['status'] === 'error') {
+                                error_log("⚠️ Validation skipped: " . ($validationResult['message'] ?? 'Unknown error'));
+                            }
+                        }
+                    }
+                } else {
+                    error_log("⚠️ Validation skipped: Missing report ID or location data (reportId: " . ($reportId ?? 'null') . ", lat: " . ($latitude ?? 'null') . ", lng: " . ($longitude ?? 'null') . ")");
+                }
+            } catch (Exception $validationError) {
+                error_log("⚠️ Validation error (non-fatal): " . $validationError->getMessage());
+                // Continue even if validation fails
+            }
+            
+            // Attempt triangulation for acoustic source localization (with error handling)
+            try {
+                require_once __DIR__ . '/triangulate_source.php';
+                if (function_exists('triangulateSource')) {
+                    $triangulationResult = triangulateSource($reportId);
+                    if ($triangulationResult['status'] === 'triangulated') {
+                        error_log("✅ Triangulation: Report #$reportId part of cluster #" . $triangulationResult['cluster_id'] . 
+                                 " with " . $triangulationResult['report_count'] . " reports");
+                    }
+                }
+            } catch (Exception $triangulationError) {
+                error_log("⚠️ Triangulation error (non-fatal): " . $triangulationError->getMessage());
+                // Continue even if triangulation fails
+            }
+            
+            // Check proximity alerts (with error handling)
+            try {
+                if ($latitude !== null && $longitude !== null) {
+                    require_once __DIR__ . '/check_proximity_alerts.php';
+                    if (function_exists('checkProximityAlerts')) {
+                        $alertResult = checkProximityAlerts($reportId, 'analysis', $latitude, $longitude, $severity);
+                        if ($alertResult['alerts_triggered'] > 0) {
+                            error_log("🔔 Proximity alerts: " . $alertResult['alerts_triggered'] . " users notified");
+                        }
+                    }
+                }
+            } catch (Exception $alertError) {
+                error_log("⚠️ Proximity alert error (non-fatal): " . $alertError->getMessage());
+                // Continue even if alerts fail
+            }
+        }
 
     // 11. Return Diagnosis to Frontend
     http_response_code(200);
@@ -744,15 +828,115 @@ if ($http_code !== 200) {
         "status" => "success",
         "analysis_type" => "acoustic_analysis",
         "diagnosis" => $transformed_diagnosis,
-        "report_saved" => $saveResult
+        "report_saved" => ($saveResult && (is_array($saveResult) ? $saveResult['success'] : $saveResult))
     ], JSON_PRETTY_PRINT);
     exit; // Exit after successful LLM analysis
+} else {
+        // API key not configured - use fallback rule-based analysis
+        error_log("⚠️ Groq API key not configured, using rule-based fallback analysis");
+        
+        // Use rule-based analysis
+        $confidence = floatval($data['confidence_score'] ?? 0.5);
+        $rms = floatval($data['rms_level'] ?? 0.1);
+        $hazard = $data['top_hazard'] ?? 'Unknown acoustic event';
+
+        // Calculate risk based on confidence and RMS level
+        $risk_base = $confidence * 3; // 0-3 from confidence
+        $risk_rms = min($rms * 2, 2); // 0-2 from volume
+        $calculated_risk = min(max(round($risk_base + $risk_rms), 1), 5);
+
+        $signature_name = str_replace(['"', "'"], '', $hazard); // Clean hazard name for signature
+        $safety_verdict = $calculated_risk >= 4 ? "DANGEROUS" : ($calculated_risk >= 3 ? "ATTENTION" : "SAFE");
+
+        $fallback_diagnosis = [
+            "audio_source" => "Urban Infrastructure Acoustic Monitoring System",
+            "analysis_goal" => "Identify and assess sounds that may indicate infrastructure issues or safety concerns",
+            "confidence_score" => $confidence,
+            "detected_signatures" => [
+                [
+                    "signature_name" => $signature_name,
+                    "classification" => $infrastructure_assessments[$hazard] ?? "Unusual acoustic event requiring further analysis",
+                    "recommended_action" => $monitoring_actions[$calculated_risk] ?? "Continue standard monitoring protocols"
+                ]
+            ],
+            "executive_conclusion" => "Our analysis has identified one primary audio event: " . $signature_name . ". " . ($calculated_risk >= 3 ? "This appears to be " . ($calculated_risk >= 4 ? "a serious concern" : "a potential issue") . " that requires attention." : "The sound appears to be within normal operating parameters.") . " " . ($calculated_risk >= 4 ? "Immediate action is recommended." : ($calculated_risk >= 3 ? "We recommend investigating this further." : "No immediate action is required.")),
+            "risk_assessment" => [
+                "severity" => $calculated_risk >= 4 ? "CRITICAL" : ($calculated_risk >= 3 ? "HIGH" : ($calculated_risk >= 2 ? "MEDIUM" : "LOW")),
+                "is_problem" => $calculated_risk >= 3 ? "YES" : "NO",
+                "should_investigate" => $calculated_risk >= 3 ? "YES" : "NO",
+                "should_call_authorities" => $calculated_risk >= 4 ? "YES" : "NO",
+                "risk_description" => ($calculated_risk >= 4 ? "This is a serious safety concern that requires immediate attention. Emergency services should be contacted." : ($calculated_risk >= 3 ? "This requires investigation to determine if action is needed. Authorities may need to be notified depending on findings." : "This appears to be within normal parameters. No immediate action required."))
+            ],
+            "report_metadata" => [
+                "analysis_timestamp" => date('c'),
+                "confidence_level" => round($confidence * 100) . "%",
+                "fusion_methodology" => "Acoustic Pattern Analysis"
+            ],
+            "cisa_analysis" => [
+                "unified_sound_event_identification" => [
+                    "primary_sound_event" => $signature_name,
+                    "yamnet_confirmation" => "The sound pattern has been identified through acoustic analysis and matches known sound signatures.",
+                    "spectrogram_evidence" => "The sound's energy and frequency characteristics have been analyzed and recorded.",
+                    "mfcc_timbral_evidence" => "The sound's quality and characteristics have been examined and documented."
+                ],
+                "risk_assessment_and_acoustic_metrics" => [
+                    "intensity_loudness" => "The sound is " . ($rms > 0.1 ? "quite loud" : ($rms > 0.05 ? "moderately loud" : "relatively quiet")) . ", which " . ($rms > 0.1 ? "may indicate a significant acoustic event" : ($rms > 0.05 ? "suggests a noticeable sound" : "suggests a subtle acoustic signature")) . ".",
+                    "temporal_dynamics" => "The sound pattern shows " . (round($confidence * 100) > 70 ? "strong" : (round($confidence * 100) > 50 ? "moderate" : "some")) . " consistency, with " . round($confidence * 100) . "% confidence in the detection.",
+                    "frequency_analysis" => "The sound's pitch and tone characteristics have been analyzed to help identify its source and nature."
+                ],
+                "conclusion_and_safety_verdict" => [
+                    "analysis_summary" => "Our analysis has identified one primary audio event: " . $signature_name . ". This sound pattern was detected with " . round($confidence * 100) . "% confidence. " . ($calculated_risk >= 3 ? "This appears to be " . ($calculated_risk >= 4 ? "a serious concern" : "a potential issue") . " that requires attention." : "The sound appears to be within normal operating parameters."),
+                    "recommended_action" => $monitoring_actions[$calculated_risk] ?? "Continue standard monitoring protocols",
+                    "verdict" => $safety_verdict,
+                    "confidence_level" => "Analysis completed with " . round($confidence * 100) . "% confidence."
+                ]
+            ]
+        ];
+
+        // Categorize fallback diagnosis
+        $category = 'Other'; // Default for fallback
+        $fallback_diagnosis['category'] = $category;
+        
+        // Save to Database
+        error_log("💾 Attempting to save fallback report to database...");
+        $saveResult = saveAnalysisReport($fallback_diagnosis, $data, $category);
+        
+        if ($saveResult && is_array($saveResult) && isset($saveResult['report_id'])) {
+            error_log("✅ Fallback report successfully saved to database (ID: " . $saveResult['report_id'] . ")");
+        } elseif ($saveResult) {
+            error_log("✅ Fallback report successfully saved to database");
+        } else {
+            error_log("❌ WARNING: Failed to save fallback report to database");
+        }
+
+        http_response_code(200);
+        ob_clean(); // Clear any output before sending JSON
+        echo json_encode([
+            "status" => "success",
+            "analysis_type" => "acoustic_analysis_fallback",
+            "diagnosis" => $fallback_diagnosis,
+            "report_saved" => ($saveResult && (is_array($saveResult) ? $saveResult['success'] : $saveResult))
+        ], JSON_PRETTY_PRINT);
+        exit;
     }
 
 } catch (Exception $e) {
     // Log the error for debugging
     error_log("❌ Error in analyze.php: " . $e->getMessage());
     error_log("❌ Stack trace: " . $e->getTraceAsString());
+    
+    // Check if we have valid data to work with
+    if (!isset($data) || !is_array($data)) {
+        // If we don't have data, return an error response
+        http_response_code(500);
+        ob_clean();
+        echo json_encode([
+            "status" => "error",
+            "message" => "Failed to process request: " . $e->getMessage(),
+            "error_type" => "processing_error"
+        ], JSON_PRETTY_PRINT);
+        exit;
+    }
     
     // Fallback: Use rule-based analysis when API fails
     $confidence = floatval($data['confidence_score'] ?? 0.5);
@@ -819,7 +1003,9 @@ if ($http_code !== 200) {
     error_log("💾 Attempting to save fallback report to database...");
     $saveResult = saveAnalysisReport($fallback_diagnosis, $data, $category);
     
-    if ($saveResult) {
+    if ($saveResult && is_array($saveResult) && isset($saveResult['report_id'])) {
+        error_log("✅ Fallback report successfully saved to database (ID: " . $saveResult['report_id'] . ")");
+    } elseif ($saveResult) {
         error_log("✅ Fallback report successfully saved to database");
     } else {
         error_log("❌ WARNING: Failed to save fallback report to database");
@@ -831,7 +1017,7 @@ if ($http_code !== 200) {
         "status" => "success",
         "analysis_type" => "acoustic_analysis_fallback",
         "diagnosis" => $fallback_diagnosis,
-        "report_saved" => $saveResult
+        "report_saved" => ($saveResult && (is_array($saveResult) ? $saveResult['success'] : $saveResult))
     ], JSON_PRETTY_PRINT);
 }
 
@@ -968,9 +1154,18 @@ function saveAnalysisReport($diagnosis, $originalData, $category = null) {
         $longitude = isset($originalData['longitude']) && $originalData['longitude'] !== null && $originalData['longitude'] !== '' ? floatval($originalData['longitude']) : null;
         $address = isset($originalData['address']) ? $originalData['address'] : null;
         
-        // Get user ID for authenticated users
-        $userId = getCurrentUserId();
-        $isAnonymous = ($userId === null) ? true : false;
+        // Get user ID for authenticated users (with error handling)
+        $userId = null;
+        $isAnonymous = true;
+        try {
+            if (function_exists('getCurrentUserId')) {
+                $userId = getCurrentUserId();
+                $isAnonymous = ($userId === null) ? true : false;
+            }
+        } catch (Exception $e) {
+            error_log("⚠️ Error getting current user ID: " . $e->getMessage());
+            // Continue with anonymous user
+        }
         
         $sql = "INSERT INTO analysis_reports (
             user_id, is_anonymous, timestamp, top_hazard, confidence_score, rms_level, spectral_centroid, frequency,
@@ -1013,7 +1208,7 @@ function saveAnalysisReport($diagnosis, $originalData, $category = null) {
             error_log("📊 Report details - Signature: " . $signature_name . ", Severity: " . $severity . ", Verdict: " . $verdict);
             error_log("📝 Executive Conclusion: " . substr($executive_conclusion, 0, 100) . "...");
             error_log("🤖 AI-generated content saved: " . (!empty($executive_conclusion) ? 'YES' : 'NO'));
-            return true;
+            return ['success' => true, 'report_id' => $insertId];
         } else {
             $errorInfo = $stmt->errorInfo();
             error_log("❌ Failed to save analysis report - execute() returned false");

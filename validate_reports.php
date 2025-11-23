@@ -14,6 +14,15 @@ require_once __DIR__ . '/audit_helper.php';
  */
 function validateReport($reportId, $reportType) {
     try {
+        // Validate report ID
+        if (!$reportId || $reportId <= 0) {
+            return [
+                'status' => 'error',
+                'message' => 'Invalid report ID',
+                'correlations' => []
+            ];
+        }
+        
         $pdo = getDBConnection();
         
         // Get the report details

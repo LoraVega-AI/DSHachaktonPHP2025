@@ -199,8 +199,9 @@ function calculateAverageSeverity($reports) {
 
 /**
  * API endpoint for manual triangulation
+ * Only run when accessed directly, not when included
  */
-if (php_sapi_name() !== 'cli') {
+if (php_sapi_name() !== 'cli' && basename($_SERVER['PHP_SELF']) === basename(__FILE__)) {
     header("Content-Type: application/json; charset=UTF-8");
     
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
