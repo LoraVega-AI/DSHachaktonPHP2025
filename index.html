@@ -473,6 +473,436 @@
             font-size: 14px;
         }
 
+        /* Camera Analysis Styles */
+        .upload-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .camera-analysis-button {
+            background: var(--accent-cyan) !important;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-analysis-button:hover {
+            background: #0891b2 !important;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(6, 182, 212, 0.3);
+        }
+
+        .camera-analysis-button:disabled {
+            background: var(--surface) !important;
+            color: var(--text-muted) !important;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Loading spinner for disabled button */
+        .camera-analysis-button:disabled::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            margin: auto;
+            border: 2px solid transparent;
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: button-loading-spinner 1s ease infinite;
+        }
+
+        @keyframes button-loading-spinner {
+            from { transform: rotate(0turn); }
+            to { transform: rotate(1turn); }
+        }
+
+        .camera-preview-section {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .camera-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 16px;
+        }
+
+        .timer-display {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .camera-stop-button {
+            padding: 12px 24px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .camera-stop-button:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+
+        /* Progress Bar Styles */
+        .progress-container {
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--surface);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan));
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .camera-status-section {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .camera-status-section.analyzing {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        }
+
+        .camera-status-section.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        /* Camera Container Animation */
+        .camera-analysis-container {
+            animation: slideInUp 0.3s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .camera-preview-section {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Camera Analysis Report Styles */
+        .camera-analysis-report {
+            margin-top: 20px;
+        }
+
+        .camera-analysis-report h3 {
+            color: var(--accent-blue);
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .camera-analysis-report h4 {
+            color: var(--accent-cyan);
+            margin: 25px 0 15px 0;
+            font-size: 18px;
+        }
+
+        .camera-analysis-report h5 {
+            color: var(--text-primary);
+            margin: 15px 0 10px 0;
+            font-size: 16px;
+        }
+
+        .camera-analysis-report h6 {
+            color: var(--text-secondary);
+            margin: 10px 0 5px 0;
+            font-size: 14px;
+        }
+
+        .analysis-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--surface);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .summary-value {
+            color: var(--accent-blue);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .tf-analysis-section,
+        .llm-analysis-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--surface);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .issue-item,
+        .signature-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .issue-item.severity-critical,
+        .signature-item.severity-CRITICAL {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .issue-item.severity-high,
+        .signature-item.severity-HIGH {
+            border-left-color: #f97316;
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        .issue-item.severity-medium,
+        .signature-item.severity-medium {
+            border-left-color: #eab308;
+            background: rgba(234, 179, 8, 0.1);
+        }
+
+        .issue-item.severity-low,
+        .signature-item.severity-low {
+            border-left-color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .issue-item.severity-info {
+            border-left-color: var(--accent-cyan);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .executive-conclusion {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .executive-conclusion p {
+            margin: 0;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .risk-assessment {
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .risk-assessment ul {
+            margin: 10px 0 0 20px;
+            padding: 0;
+        }
+
+        .risk-assessment li {
+            margin-bottom: 5px;
+            color: var(--text-secondary);
+        }
+
+        .detected-signatures {
+            margin-top: 15px;
+        }
+
+        .report-actions {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* New Camera Analysis Report Styles */
+        .defining-conclusion,
+        .detailed-observations,
+        .risk-assessment,
+        .action-steps {
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .defining-conclusion {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .detailed-observations {
+            background: rgba(249, 250, 251, 0.5);
+            border: 1px solid var(--border-color);
+        }
+
+        .risk-assessment {
+            background: rgba(245, 101, 101, 0.1);
+            border: 1px solid rgba(245, 101, 101, 0.3);
+        }
+
+        .action-steps {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .defining-conclusion h5,
+        .detailed-observations h5,
+        .risk-assessment h5,
+        .action-steps h5 {
+            margin: 0 0 15px 0;
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .conclusion-text,
+        .observations-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .risk-level {
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .risk-details {
+            display: grid;
+            gap: 10px;
+        }
+
+        .risk-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .risk-explanation {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+        }
+
+        .risk-explanation p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
+        .action-list {
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .action-list li {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 4px;
+            border-left: 3px solid var(--accent-green);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .action-list li strong {
+            color: var(--accent-green);
+        }
+
         .result-container {
             min-height: 0;
             margin-top: 8px;
@@ -2133,7 +2563,42 @@
                             <div class="upload-text">Upload Infrastructure Image</div>
                             <div class="upload-subtext">Click or drag and drop an image file here</div>
                             <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
-                            <button class="big-upload-button" id="imageUploadButton">Choose Image File</button>
+                            <div class="upload-buttons">
+                                <button class="big-upload-button" id="imageUploadButton">Choose Image File</button>
+                                <button class="big-upload-button camera-analysis-button" id="startCameraAnalysisButton" disabled>
+                                    📹 Start Camera Analysis
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Camera Analysis Container -->
+                        <div id="cameraAnalysisContainer" style="display: none;" class="camera-analysis-container">
+                            <!-- Camera Preview -->
+                            <div class="camera-preview-section">
+                                <video id="cameraVideo" autoplay playsinline muted style="width: 100%; max-width: 400px; border-radius: 8px; background: #000; border: 2px solid var(--border-color);"></video>
+
+                                <!-- Progress Bar -->
+                                <div class="progress-container" id="progressContainer" style="display: none;">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="progressFill"></div>
+                                    </div>
+                                    <div class="progress-text" id="progressText">Initializing...</div>
+                                </div>
+
+                                <div class="camera-controls">
+                                    <div class="timer-display" id="cameraTimer">10</div>
+                                    <button class="camera-stop-button" id="stopCameraAnalysisButton">Stop Analysis</button>
+                                </div>
+                            </div>
+
+                            <!-- Camera Status -->
+                            <div class="camera-status-section">
+                                <div class="status-indicator"></div>
+                                <div>
+                                    <div class="status-text">Initializing camera...</div>
+                                    <div class="status-details">Preparing for real-time analysis</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Image Preview -->
@@ -2462,14 +2927,12 @@
                 const profileImg = report.user.profile_img || `https://ui-avatars.com/api/?name=${encodeURIComponent(report.user.username)}&background=3b82f6&color=fff&size=32`;
                 userProfileHtml = `
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: var(--surface); border-radius: 6px;">
-                        <img src="${profileImg}" 
-                             alt="${escapeHtml(report.user.username)}" 
-                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; cursor: pointer;"
-                             onclick="window.location.href='user_details.html?user_id=${report.user.user_id}'"
+                        <img src="${profileImg}"
+                             alt="${escapeHtml(report.user.username)}"
+                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
                              onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(report.user.username)}&background=3b82f6&color=fff&size=32'">
                         <div style="flex: 1;">
-                            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); cursor: pointer;" 
-                                 onclick="window.location.href='user_details.html?user_id=${report.user.user_id}'">
+                            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">
                                 ${escapeHtml(report.user.username)}
                             </div>
                             <div style="font-size: 10px; color: var(--text-muted);">Reported by</div>
@@ -3592,6 +4055,594 @@
             }
         });
 
+        // Camera analysis functionality
+        const startCameraAnalysisButton = document.getElementById('startCameraAnalysisButton');
+        const stopCameraAnalysisButton = document.getElementById('stopCameraAnalysisButton');
+        const cameraAnalysisContainer = document.getElementById('cameraAnalysisContainer');
+        const cameraVideo = document.getElementById('cameraVideo');
+        const cameraTimer = document.getElementById('cameraTimer');
+
+        // Handle camera analysis start
+        startCameraAnalysisButton.addEventListener('click', () => {
+            startCameraAnalysis();
+        });
+
+        // Handle camera analysis stop
+        stopCameraAnalysisButton.addEventListener('click', () => {
+            stopCameraAnalysis();
+        });
+
+        // Camera capture variables
+        let cameraStream = null;
+        let captureInterval = null;
+        let capturedFrames = [];
+        let analysisTimer = null;
+
+        // Initialize camera and start capture
+        async function initializeCamera() {
+            try {
+                // Check if camera is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('Camera not supported on this device/browser');
+                }
+
+                updateCameraStatus('Requesting camera access...', 'Please allow camera permissions');
+
+                // Request camera access
+                const constraints = {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'environment' // Use back camera if available
+                    },
+                    audio: false
+                };
+
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // Display camera feed
+                cameraVideo.srcObject = cameraStream;
+                cameraAnalysisContainer.style.display = 'block';
+                imageUploadArea.style.display = 'none';
+
+                // Update status
+                updateCameraStatus('Camera active', 'Capturing frames for analysis...');
+
+                return true;
+            } catch (error) {
+                console.error('Camera access error:', error);
+
+                let errorMessage = 'Camera access failed';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Camera permission denied. Please allow camera access and try again.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No camera found on this device.';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'Camera is already in use by another application.';
+                } else if (error.name === 'OverconstrainedError') {
+                    errorMessage = 'Camera does not meet requirements. Trying with basic constraints...';
+                    // Try with basic constraints as fallback
+                    return await initializeCameraFallback();
+                } else {
+                    errorMessage = 'Camera error: ' + error.message;
+                }
+
+                throw new Error(errorMessage);
+            }
+        }
+
+        // Fallback camera initialization with basic constraints
+        async function initializeCameraFallback() {
+            try {
+                const constraints = {
+                    video: true, // Basic video constraints
+                    audio: false
+                };
+
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // Display camera feed
+                cameraVideo.srcObject = cameraStream;
+                cameraAnalysisContainer.style.display = 'block';
+                imageUploadArea.style.display = 'none';
+
+                updateCameraStatus('Camera active (basic mode)', 'Capturing frames for analysis...');
+                return true;
+            } catch (error) {
+                throw new Error('Camera initialization failed completely: ' + error.message);
+            }
+        }
+
+        // Capture frames at specified FPS for duration
+        function startFrameCapture(durationSeconds = 10, fps = 1) {
+            return new Promise((resolve) => {
+                capturedFrames = [];
+                const frameInterval = 1000 / fps; // Convert FPS to milliseconds
+                const totalFrames = durationSeconds * fps;
+                let frameCount = 0;
+
+                // Show progress bar
+                const progressContainer = document.getElementById('progressContainer');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                progressContainer.style.display = 'block';
+
+                captureInterval = setInterval(async () => {
+                    try {
+                        const frame = await captureCurrentFrame();
+                        capturedFrames.push({
+                            frame: frame,
+                            timestamp: Date.now(),
+                            frameNumber: frameCount
+                        });
+
+                        frameCount++;
+
+                        // Update progress bar
+                        const progressPercent = (frameCount / totalFrames) * 100;
+                        progressFill.style.width = progressPercent + '%';
+                        progressText.textContent = `Captured ${frameCount}/${totalFrames} frames`;
+
+                        // Update timer
+                        const remainingTime = Math.ceil((totalFrames - frameCount) / fps);
+                        cameraTimer.textContent = remainingTime;
+
+                        // Update status
+                        updateCameraStatus('Capturing frames...', `Frame ${frameCount}/${totalFrames} captured`);
+
+                        if (frameCount >= totalFrames) {
+                            clearInterval(captureInterval);
+                            progressText.textContent = 'Capture complete!';
+                            setTimeout(() => {
+                                progressContainer.style.display = 'none';
+                                resolve(capturedFrames);
+                            }, 500);
+                        }
+                    } catch (error) {
+                        console.error('Frame capture error:', error);
+                        clearInterval(captureInterval);
+                        progressContainer.style.display = 'none';
+                        resolve(capturedFrames); // Return what we have
+                    }
+                }, frameInterval);
+            });
+        }
+
+        // Capture current video frame as base64
+        function captureCurrentFrame() {
+            return new Promise((resolve, reject) => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+
+                    canvas.width = cameraVideo.videoWidth;
+                    canvas.height = cameraVideo.videoHeight;
+
+                    // Draw current video frame to canvas
+                    ctx.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+
+                    // Convert to base64 (JPEG for smaller size)
+                    const base64Data = canvas.toDataURL('image/jpeg', 0.8);
+                    resolve(base64Data);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Stop camera and cleanup
+        function stopCamera() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+
+            if (captureInterval) {
+                clearInterval(captureInterval);
+                captureInterval = null;
+            }
+
+            if (analysisTimer) {
+                clearTimeout(analysisTimer);
+                analysisTimer = null;
+            }
+
+            cameraVideo.srcObject = null;
+            cameraAnalysisContainer.style.display = 'none';
+            imageUploadArea.style.display = 'block';
+        }
+
+        // Update camera status display
+        function updateCameraStatus(statusText, detailsText, isError = false) {
+            const statusSection = cameraAnalysisContainer.querySelector('.camera-status-section');
+            if (statusSection) {
+                statusSection.querySelector('.status-text').textContent = statusText;
+                statusSection.querySelector('.status-details').textContent = detailsText;
+
+                // Update status indicator color
+                const indicator = statusSection.querySelector('.status-indicator');
+                if (indicator) {
+                    if (isError) {
+                        indicator.style.background = '#ef4444';
+                        statusSection.classList.add('error');
+                        statusSection.classList.remove('analyzing');
+                    } else if (statusText.includes('Analyzing') || statusText.includes('Processing') || statusText.includes('Generating')) {
+                        indicator.style.background = '#3b82f6'; // --accent-blue
+                        statusSection.classList.add('analyzing');
+                        statusSection.classList.remove('error');
+                    } else {
+                        indicator.style.background = '#10b981'; // --accent-green
+                        statusSection.classList.remove('analyzing', 'error');
+                    }
+                }
+            }
+        }
+
+
+        // Main camera analysis orchestration
+        async function startCameraAnalysis() {
+            try {
+                // Disable button and show loading
+                startCameraAnalysisButton.disabled = true;
+                startCameraAnalysisButton.textContent = 'Initializing...';
+
+                // Initialize camera
+                await initializeCamera();
+
+                // Start frame capture (10 seconds at 1 fps = 10 frames)
+                updateCameraStatus('Capturing frames...', 'Analyzing environment for 10 seconds...');
+                cameraTimer.textContent = '10';
+
+                const frames = await startFrameCapture(10, 1);
+
+                if (frames.length === 0) {
+                    throw new Error('No frames were captured. Please check camera permissions.');
+                }
+
+                if (frames.length < 5) {
+                    console.warn('Only ' + frames.length + ' frames captured, analysis may be limited');
+                }
+
+                // Send frames directly to LLM for analysis
+                updateCameraStatus('Analyzing with AI...', 'Sending frames to advanced AI for comprehensive analysis...');
+                await sendBatchToBackend(frames);
+
+            } catch (error) {
+                console.error('Camera analysis error:', error);
+
+                // Provide user-friendly error messages
+                let userMessage = 'Analysis failed';
+                if (error.message.includes('permission') || error.message.includes('denied')) {
+                    userMessage = 'Camera access denied. Please allow camera permissions in your browser and try again.';
+                } else if (error.message.includes('not supported')) {
+                    userMessage = 'Camera is not supported on this device/browser. Please try a different device.';
+                } else if (error.message.includes('in use')) {
+                    userMessage = 'Camera is already in use by another application. Please close other camera apps and try again.';
+                } else if (error.message.includes('network') || error.message.includes('connection')) {
+                    userMessage = 'Network error occurred. Please check your internet connection and try again.';
+                } else {
+                    userMessage = 'Analysis failed: ' + error.message;
+                }
+
+                alert(userMessage);
+                stopCamera();
+            } finally {
+                // Re-enable button
+                startCameraAnalysisButton.disabled = false;
+                startCameraAnalysisButton.textContent = '📹 Start Camera Analysis';
+            }
+        }
+
+        // Stop camera analysis
+        function stopCameraAnalysis() {
+            stopCamera();
+            updateCameraStatus('Analysis stopped', 'Camera analysis cancelled by user');
+        }
+
+        // Send batch data to backend
+        async function sendBatchToBackend(frames) {
+            try {
+                // Get GPS location
+                let location = { latitude: null, longitude: null };
+                try {
+                    location = await getGPSLocation();
+                } catch (gpsError) {
+                    console.warn('GPS location not available:', gpsError);
+                }
+
+                // Prepare batch data (limit frame data size to prevent request too large)
+                const maxFramesToSend = 10; // Send max 10 frames to backend to avoid payload size issues
+                const framesToSend = frames.slice(0, maxFramesToSend);
+
+                const batchData = {
+                    frames: framesToSend.map(f => ({ frame: f.frame, timestamp: f.timestamp })),
+                    location: location,
+                    analysis_timestamp: new Date().toISOString(),
+                    metadata: {
+                        totalFrames: frames.length,
+                        framesSent: framesToSend.length,
+                        duration: 10,
+                        fps: 1
+                    }
+                };
+
+                updateCameraStatus('Sending to server...', 'Uploading analysis data...');
+
+                // Send to backend with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+                const response = await fetch('analyze_camera.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(batchData),
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    let errorMessage = `Server error: ${response.status}`;
+
+                    if (response.status === 413) {
+                        errorMessage = 'Data too large to send. Try reducing analysis duration.';
+                    } else if (response.status === 500) {
+                        errorMessage = 'Server error occurred. Please try again later.';
+                    } else if (response.status >= 400) {
+                        try {
+                            const errorData = JSON.parse(errorText);
+                            errorMessage = errorData.message || errorMessage;
+                        } catch (parseError) {
+                            errorMessage = errorText.substring(0, 200);
+                        }
+                    }
+
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    // Display results
+                    displayCameraAnalysisResults(result.diagnosis);
+                    stopCamera();
+                } else {
+                    throw new Error(result.message || 'Analysis failed on server');
+                }
+
+            } catch (error) {
+                console.error('Backend analysis error:', error);
+
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timed out. Please check your internet connection and try again.');
+                } else if (error.message.includes('fetch')) {
+                    throw new Error('Network error. Please check your internet connection and try again.');
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        // Display camera analysis results
+        function displayCameraAnalysisResults(llmDiagnosis) {
+            // Use existing imageResult container
+            const resultContainer = document.getElementById('imageResult');
+
+            // Create comprehensive report
+            const reportHtml = `
+                <div class="camera-analysis-report">
+                    <h3>📹 Camera Analysis Complete</h3>
+
+                    <div class="analysis-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Frames Analyzed:</span>
+                            <span class="summary-value">${llmDiagnosis.temporal_analysis?.frame_count || 'Multiple'}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Analysis Duration:</span>
+                            <span class="summary-value">${llmDiagnosis.temporal_analysis?.duration_seconds || 10}s</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">AI Confidence:</span>
+                            <span class="summary-value">${(llmDiagnosis.confidence_score * 100).toFixed(1)}%</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Risk Level:</span>
+                            <span class="summary-value">${llmDiagnosis.risk_assessment?.severity || 'SAFE'}</span>
+                        </div>
+                    </div>
+
+                    <div class="llm-analysis-section">
+                        <h4>🔍 Comprehensive Scene Analysis</h4>
+
+                        <!-- Defining Conclusion -->
+                        <div class="defining-conclusion">
+                            <h5>📋 Defining Conclusion</h5>
+                            <div class="conclusion-text">
+                                ${llmDiagnosis.executive_conclusion || 'Analysis completed successfully.'}
+                            </div>
+                        </div>
+
+                        <!-- Detailed Observations -->
+                        <div class="detailed-observations">
+                            <h5>👁️ Comprehensive Observations</h5>
+                            <div class="observations-text">
+                                ${llmDiagnosis.detected_signatures && llmDiagnosis.detected_signatures[0] ?
+                                    llmDiagnosis.detected_signatures[0].classification :
+                                    'Detailed scene analysis completed.'}
+                            </div>
+                        </div>
+
+                        <!-- Risk Assessment -->
+                        ${llmDiagnosis.risk_assessment ? `
+                            <div class="risk-assessment">
+                                <h5>⚠️ Situation Assessment</h5>
+                                <div class="risk-level">
+                                    <strong>Severity Level:</strong> ${llmDiagnosis.risk_assessment.severity}
+                                </div>
+                                <div class="risk-details">
+                                    <div class="risk-item">
+                                        <strong>Immediate Concerns:</strong> ${llmDiagnosis.risk_assessment.is_problem === 'YES' ? 'YES' : 'NO'}
+                                    </div>
+                                    <div class="risk-item">
+                                        <strong>Requires Attention:</strong> ${llmDiagnosis.risk_assessment.should_investigate === 'YES' ? 'YES' : 'NO'}
+                                    </div>
+                                    <div class="risk-explanation">
+                                        <strong>Assessment Details:</strong>
+                                        <p>${llmDiagnosis.risk_assessment.risk_description}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Action Steps -->
+                        ${llmDiagnosis.risk_assessment && llmDiagnosis.risk_assessment.action_steps && llmDiagnosis.risk_assessment.action_steps.length > 0 ? `
+                            <div class="action-steps">
+                                <h5>🛠️ Recommended Actions</h5>
+                                <ol class="action-list">
+                                    ${llmDiagnosis.risk_assessment.action_steps.map((step, index) => `<li><strong>Action ${index + 1}:</strong> ${step}</li>`).join('')}
+                                </ol>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <div class="report-actions">
+                        <button class="big-upload-button" id="createReportBtn" onclick="createReportFromCameraAnalysis(${JSON.stringify(llmDiagnosis).replace(/"/g, '&quot;')}, this)">
+                            📋 Create Formal Report
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            resultContainer.innerHTML = reportHtml;
+
+            // Scroll to results
+            resultContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Create formal report from camera analysis
+        async function createReportFromCameraAnalysis(diagnosis, buttonElement) {
+            try {
+                // Parse diagnosis if it's a string (from onclick)
+                if (typeof diagnosis === 'string') {
+                    diagnosis = JSON.parse(diagnosis);
+                }
+
+                // Get GPS location - REQUIRED for map display
+                const location = await getGPSLocation();
+                
+                // Build comprehensive description from diagnosis
+                let description = diagnosis.executive_conclusion || 'Camera-based analysis completed.';
+                
+                // Add detailed observations if available
+                if (diagnosis.detected_signatures && diagnosis.detected_signatures[0]) {
+                    description += '\n\nDetailed Observations:\n' + (diagnosis.detected_signatures[0].classification || '');
+                }
+                
+                // Add risk assessment if available
+                if (diagnosis.risk_assessment && diagnosis.risk_assessment.risk_description) {
+                    description += '\n\nRisk Assessment:\n' + diagnosis.risk_assessment.risk_description;
+                }
+                
+                // Add action steps if available
+                if (diagnosis.risk_assessment && diagnosis.risk_assessment.action_steps && diagnosis.risk_assessment.action_steps.length > 0) {
+                    description += '\n\nRecommended Actions:\n' + diagnosis.risk_assessment.action_steps.join('\n');
+                }
+
+                // Prepare report data for submission
+                const reportData = {
+                    title: `Camera Analysis Report - ${new Date().toLocaleDateString()}`,
+                    description: description,
+                    severity: diagnosis.risk_assessment ? diagnosis.risk_assessment.severity.toLowerCase() : 'medium',
+                    category: diagnosis.category || 'Other', // Use standard category or 'Other' as fallback
+                    analysis_type: 'camera_analysis',
+                    diagnosis_data: JSON.stringify(diagnosis),
+                    timestamp: new Date().toISOString()
+                };
+
+                // Add location data - CRITICAL for map display
+                if (location.latitude && location.longitude) {
+                    reportData.latitude = location.latitude;
+                    reportData.longitude = location.longitude;
+                } else {
+                    // Warn user that report won't appear on map without location
+                    const proceed = confirm('⚠️ Location not available. Report will be saved but won\'t appear on the map. Continue anyway?');
+                    if (!proceed) {
+                        return;
+                    }
+                }
+
+                // Show loading state
+                const button = buttonElement || document.getElementById('createReportBtn');
+                const originalText = button ? button.textContent : '📋 Create Formal Report';
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Creating Report...';
+                }
+
+                // Submit via POST request
+                const formData = new FormData();
+                Object.keys(reportData).forEach(key => {
+                    formData.append(key, reportData[key]);
+                });
+
+                const response = await fetch('submit_analysis_report.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const hasLocation = reportData.latitude && reportData.longitude;
+                    
+                    // Check if user is logged in
+                    let userMessage = '';
+                    try {
+                        const authResponse = await fetch('check_auth.php');
+                        const authData = await authResponse.json();
+                        if (authData.logged_in && authData.user) {
+                            userMessage = '\n\n👤 Saved to your account - will appear in your personal detection history!';
+                        } else {
+                            userMessage = '\n\n💡 Tip: Log in to see this report in your personal history!';
+                        }
+                    } catch (e) {
+                        // Ignore auth check errors
+                    }
+                    
+                    const locationMessage = hasLocation 
+                        ? '\n\n📍 Your report will appear on the map!' 
+                        : '\n\n⚠️ Note: Report saved but won\'t appear on map (no location data).';
+                    
+                    alert('✅ Report created successfully!' + locationMessage + userMessage + '\n\nYou can view it in:\n• Map page (if location available)\n• Your personal reports (if logged in)');
+                    
+                    // Optionally redirect to map if location available
+                    if (hasLocation) {
+                        const viewOnMap = confirm('Would you like to view your report on the map now?');
+                        if (viewOnMap) {
+                            window.location.href = 'map.html';
+                        }
+                    }
+                } else {
+                    throw new Error(result.message || 'Failed to create report');
+                }
+
+            } catch (error) {
+                console.error('Error creating report:', error);
+                alert('❌ Error creating report: ' + error.message);
+            } finally {
+                // Re-enable button
+                const button = buttonElement || document.getElementById('createReportBtn');
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = '📋 Create Formal Report';
+                }
+            }
+        }
+
         // Get GPS location helper function
         function getGPSLocation() {
             return new Promise((resolve) => {
@@ -3599,7 +4650,7 @@
                     resolve({ latitude: null, longitude: null });
                     return;
                 }
-                
+
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         resolve({
@@ -4706,9 +5757,17 @@
             }
         }
 
+
         // Initialize auth on page load
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
+
+            // Enable camera analysis button immediately
+            const startCameraAnalysisButton = document.getElementById('startCameraAnalysisButton');
+            if (startCameraAnalysisButton) {
+                startCameraAnalysisButton.disabled = false;
+                startCameraAnalysisButton.textContent = '📹 Start Camera Analysis';
+            }
         });
 
     </script>

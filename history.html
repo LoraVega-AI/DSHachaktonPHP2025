@@ -1196,14 +1196,12 @@
                 const profileImg = report.user.profile_img || `https://ui-avatars.com/api/?name=${encodeURIComponent(report.user.username)}&background=3b82f6&color=fff&size=32`;
                 userProfileHtml = `
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 8px; background: var(--surface); border-radius: 6px;">
-                        <img src="${profileImg}" 
-                             alt="${escapeHtml(report.user.username)}" 
-                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; cursor: pointer;"
-                             onclick="window.location.href='user_details.html?user_id=${report.user.user_id}'"
+                        <img src="${profileImg}"
+                             alt="${escapeHtml(report.user.username)}"
+                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
                              onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(report.user.username)}&background=3b82f6&color=fff&size=32'">
                         <div style="flex: 1;">
-                            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); cursor: pointer;" 
-                                 onclick="window.location.href='user_details.html?user_id=${report.user.user_id}'">
+                            <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);">
                                 ${escapeHtml(report.user.username)}
                             </div>
                             <div style="font-size: 10px; color: var(--text-muted);">Reported by</div>
