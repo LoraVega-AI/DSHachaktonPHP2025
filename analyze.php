@@ -1155,6 +1155,7 @@ function saveAnalysisReport($diagnosis, $originalData, $category = null) {
         $address = isset($originalData['address']) ? $originalData['address'] : null;
         
         // Get user ID for authenticated users (with error handling)
+        // Guest users will have null userId and will be saved as anonymous
         $userId = null;
         $isAnonymous = true;
         try {
@@ -1164,7 +1165,14 @@ function saveAnalysisReport($diagnosis, $originalData, $category = null) {
             }
         } catch (Exception $e) {
             error_log("⚠️ Error getting current user ID: " . $e->getMessage());
-            // Continue with anonymous user
+            // Continue with anonymous user - guest reports are still saved
+        }
+        
+        // Log for debugging - guest reports are saved with user_id = NULL and is_anonymous = 1
+        if ($isAnonymous) {
+            error_log("📝 Guest user submitting audio/analysis report - will be saved as anonymous");
+        } else {
+            error_log("📝 Authenticated user (ID: $userId) submitting audio/analysis report");
         }
         
         $sql = "INSERT INTO analysis_reports (

@@ -88,9 +88,16 @@ try {
     // Get database connection
     $pdo = getDBConnection();
     
-    // Check if user is logged in
+    // Check if user is logged in - guest users will have null userId
     $userId = getCurrentUserId();
     $isAnonymous = ($userId === null) ? true : false;
+    
+    // Log for debugging - guest reports are saved with user_id = NULL and is_anonymous = 1
+    if ($isAnonymous) {
+        error_log("📝 Guest user submitting general report - will be saved as anonymous");
+    } else {
+        error_log("📝 Authenticated user (ID: $userId) submitting general report");
+    }
 
     // Create reports table if it doesn't exist
     $createTableSql = "CREATE TABLE IF NOT EXISTS general_reports (
