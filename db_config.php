@@ -2,13 +2,11 @@
 // db_config.php - Database configuration using PDO for MySQL
 
 // Database configuration
-define('DB_HOST', 'localhost');
-define('DB_PORT', '3307');
-define('DB_NAME', 'hackathondb');
-define('DB_USER', 'root');
-define('DB_PASS', ''); // Default XAMPP MySQL password (empty)
-define('DB_CHARSET', 'utf8mb4');
-
+define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+define('DB_PORT', getenv('DB_PORT') ?: '3307');
+define('DB_NAME', getenv('DB_NAME') ?: 'hackathondb');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: '');
 // Create PDO connection
 function getDBConnection() {
     static $pdo = null;

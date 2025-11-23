@@ -1,7 +1,4 @@
-# Environment variables and sensitive data
-.env
-.env.local
-.env.*.local
+!.env
 
 # XAMPP and local server files
 /xampp/
@@ -92,7 +89,4 @@ coverage/
 /dist/
 /build/
 
-# API keys and secrets (additional protection)
-secrets.json
-config/secrets.php
-config/api_keys.php
+
