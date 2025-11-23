@@ -680,30 +680,8 @@
                     shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
                 } else if (requiredRole === 'not-admin') {
                     shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
-                // Determine crew manager status
-                let isCrewManager = false;
-                if (isAuthenticated && user && user.role === 'crew') {
-                    const dashboardType = sessionStorage.getItem('crewDashboardType');
-                    isCrewManager = dashboardType !== 'member';
-                    if (!dashboardType) {
-                        sessionStorage.setItem('crewDashboardType', 'manager');
-                        isCrewManager = true;
-                    }
-                } else if (isAuthenticated && user && user.role === 'admin') {
-                    isCrewManager = true;
                 }
-                
-                if (requiredRole === 'crew-only') {
-                    // Tasks - ONLY for crew managers
-                    shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
-                } else if (requiredRole === 'crew-member') {
-                    // My Work - ONLY for crew members (NOT managers)
-                    shouldShow = (isAuthenticated && user && user.role === 'crew' && !isCrewManager);
-                } else if (requiredRole === 'admin') {
-                    // History, Crew Management - for admins and crew managers ONLY
-                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
-                }
-                
+
                 if (shouldShow) {
                     item.style.display = 'flex';
                     console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
@@ -711,6 +689,42 @@
                     item.style.display = 'none';
                     console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
                 }
+            });
+
+            // Determine crew manager status (outside the loop)
+            let isCrewManager = false;
+            if (isAuthenticated && user && user.role === 'crew') {
+                const dashboardType = sessionStorage.getItem('crewDashboardType');
+                isCrewManager = dashboardType !== 'member';
+                if (!dashboardType) {
+                    sessionStorage.setItem('crewDashboardType', 'manager');
+                    isCrewManager = true;
+                }
+            } else if (isAuthenticated && user && user.role === 'admin') {
+                isCrewManager = true;
+            }
+
+            // Update crew-specific navigation items based on manager status
+            const crewOnlyItems = document.querySelectorAll('.nav-item[data-role="crew-only"]');
+            const crewMemberItems = document.querySelectorAll('.nav-item[data-role="crew-member"]');
+            const adminItems = document.querySelectorAll('.nav-item[data-role="admin"]');
+
+            // Tasks - ONLY for crew managers
+            crewOnlyItems.forEach(item => {
+                const shouldShow = (isAuthenticated && user && user.role === 'crew' && isCrewManager);
+                item.style.display = shouldShow ? 'flex' : 'none';
+            });
+
+            // My Work - ONLY for crew members (NOT managers)
+            crewMemberItems.forEach(item => {
+                const shouldShow = (isAuthenticated && user && user.role === 'crew' && !isCrewManager);
+                item.style.display = shouldShow ? 'flex' : 'none';
+            });
+
+            // History, Crew Management - for admins and crew managers ONLY
+            adminItems.forEach(item => {
+                const shouldShow = (isAuthenticated && user && (user.role === 'admin' || (user.role === 'crew' && isCrewManager)));
+                item.style.display = shouldShow ? 'flex' : 'none';
             });
 
             // Show sidebar after auth check complete

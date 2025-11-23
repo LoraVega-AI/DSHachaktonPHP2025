@@ -433,6 +433,234 @@
             background: rgba(239, 68, 68, 0.2);
             color: var(--accent-red);
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .report-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .report-card-modal {
+            background: var(--surface);
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .report-card-modal:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .report-card-modal.selected {
+            border-color: var(--accent-blue);
+            background: var(--active-bg);
+        }
+
+        .report-title-modal {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .report-category-modal {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .report-stats-modal {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .report-stat-label {
+            color: var(--text-muted);
+        }
+
+        .report-stat-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Task List Styles */
+        .task-list {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .task-item {
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .task-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .task-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+            margin-right: 12px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .task-description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .task-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            font-size: 13px;
+        }
+
+        .task-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .task-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .task-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -550,9 +778,50 @@
         </div>
     </div>
 
+    <!-- Report Selection Modal -->
+    <div class="modal" id="reportSelectionModal" onclick="if(event.target === this) closeReportModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="reportModalTitle">Select Report to Assign</h2>
+                <button class="modal-close" onclick="closeReportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="report-grid" id="reportGrid">
+                    <!-- Reports will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeReportModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Tasks Modal -->
+    <div class="modal" id="memberTasksModal" onclick="if(event.target === this) closeMemberTasksModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="memberTasksTitle">Member Tasks</h2>
+                <button class="modal-close" onclick="closeMemberTasksModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="memberTasksStats" style="display: flex; gap: 16px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color);">
+                    <!-- Stats will be loaded here -->
+                </div>
+                <div class="task-list" id="memberTasksList">
+                    <!-- Tasks will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeMemberTasksModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let currentRole = 'guest';
+        let currentMemberId = null;
+        let currentMemberName = null;
 
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthStatus();
@@ -791,17 +1060,228 @@
         }
 
         function viewAssignments(memberId, memberName) {
-            window.location.href = `history.html?assigned_to=${memberId}`;
+            viewMemberTasks(memberId, memberName);
         }
 
         function assignTask(memberId, memberName) {
-            window.location.href = `history.html?assign_to=${memberId}`;
+            // Show report selection modal instead of redirecting
+            showReportSelectionModal(memberId, memberName);
+        }
+
+        // Modal management functions for report selection
+        async function showReportSelectionModal(memberId, memberName) {
+            currentMemberId = memberId;
+            currentMemberName = memberName;
+
+            const modal = document.getElementById('reportSelectionModal');
+            const modalTitle = document.getElementById('reportModalTitle');
+            const grid = document.getElementById('reportGrid');
+
+            modalTitle.textContent = `Select Report to Assign to ${memberName}`;
+
+            // Load available unassigned reports
+            try {
+                const response = await fetch('get_unassigned_reports.php', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success' && data.reports && data.reports.length > 0) {
+                    grid.innerHTML = data.reports.map(report => `
+                        <div class="report-card-modal" onclick="selectReportForMember(${report.id}, '${report.report_type}', ${memberId}, '${escapeHtml(memberName)}')">
+                            <div class="report-title-modal">${escapeHtml(report.title || 'Untitled Report')}</div>
+                            <div class="report-category-modal">${escapeHtml(report.category || 'General')}</div>
+                            <div class="report-stats-modal">
+                                <span class="report-stat-label">Severity:</span>
+                                <span class="report-stat-value severity-badge severity-${(report.severity || 'medium').toLowerCase()}">${report.severity || 'MEDIUM'}</span>
+                            </div>
+                            <div class="report-stats-modal">
+                                <span class="report-stat-label">Status:</span>
+                                <span class="report-stat-value">${formatStatus(report.status)}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 40px;">No available reports to assign</div>';
+                }
+            } catch (error) {
+                console.error('Error loading reports:', error);
+                grid.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: 40px;">Error loading reports</div>';
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeReportModal() {
+            const modal = document.getElementById('reportSelectionModal');
+            modal.classList.remove('active');
+            currentMemberId = null;
+            currentMemberName = null;
+        }
+
+        async function selectReportForMember(reportId, reportType, memberId, memberName) {
+            if (confirm(`Assign this report to ${memberName}?`)) {
+                await assignReportToMember(reportId, reportType, memberId);
+                closeReportModal();
+            }
+        }
+
+        async function assignReportToMember(reportId, reportType, memberId) {
+            try {
+                const response = await fetch('update_assignment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        report_id: parseInt(reportId),
+                        report_type: reportType,
+                        assigned_to_user_id: memberId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    alert('Task assigned successfully!');
+                    loadCrewMembers(); // Reload the crew members list
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to assign task'));
+                }
+            } catch (error) {
+                console.error('Error assigning task:', error);
+                alert('Error: Failed to assign task');
+            }
+        }
+
+        function formatStatus(status) {
+            return (status || 'pending').replace('_', ' ').toUpperCase();
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000); // seconds
+
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return Math.floor(diff / 60) + ' mins ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+            return Math.floor(diff / 86400) + ' days ago';
         }
 
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // View member's tasks in modal
+        async function viewMemberTasks(memberId, memberName) {
+            const modal = document.getElementById('memberTasksModal');
+            const title = document.getElementById('memberTasksTitle');
+            const statsContainer = document.getElementById('memberTasksStats');
+            const tasksList = document.getElementById('memberTasksList');
+
+            title.textContent = `${memberName}'s Tasks`;
+            statsContainer.innerHTML = '<div style="color: var(--text-muted);">Loading...</div>';
+            tasksList.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-muted);">Loading tasks...</div>';
+
+            modal.classList.add('active');
+
+            try {
+                const response = await fetch(`get_member_tasks.php?member_id=${memberId}`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    // Display stats
+                    const stats = data.status_counts || {};
+                    statsContainer.innerHTML = `
+                        <div class="task-stat">
+                            <div class="task-stat-value">${data.total_tasks || 0}</div>
+                            <div class="task-stat-label">Total Tasks</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-yellow);">${stats.pending || 0}</div>
+                            <div class="task-stat-label">Pending</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-blue);">${stats.in_progress || 0}</div>
+                            <div class="task-stat-label">In Progress</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-green);">${stats.solved || 0}</div>
+                            <div class="task-stat-label">Solved</div>
+                        </div>
+                        <div class="task-stat">
+                            <div class="task-stat-value" style="color: var(--accent-cyan);">${stats.verified || 0}</div>
+                            <div class="task-stat-label">Verified</div>
+                        </div>
+                    `;
+
+                    // Display tasks
+                    if (data.tasks && data.tasks.length > 0) {
+                        tasksList.innerHTML = data.tasks.map(task => `
+                            <div class="task-item">
+                                <div class="task-header">
+                                    <div class="task-title">${escapeHtml(task.title || 'Untitled Task')}</div>
+                                    <span class="severity-badge severity-${(task.severity || 'medium').toLowerCase()}">
+                                        ${task.severity || 'MEDIUM'}
+                                    </span>
+                                </div>
+                                <div class="task-meta">
+                                    <span>${escapeHtml(task.category || 'General')}</span>
+                                    <span>•</span>
+                                    <span class="report-status status-${task.status}">${formatStatus(task.status)}</span>
+                                    <span>•</span>
+                                    <span>${formatTime(task.created_at || task.timestamp)}</span>
+                                </div>
+                                ${task.description ? `
+                                    <div class="task-description">${escapeHtml(task.description)}</div>
+                                ` : ''}
+                                ${task.address ? `
+                                    <div class="task-meta" style="margin-top: 8px;">
+                                        <span>📍 ${escapeHtml(task.address)}</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        tasksList.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">✅</div>
+                                <div class="empty-state-title">No Tasks Assigned</div>
+                                <div class="empty-state-text">This crew member has no assigned tasks.</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    statsContainer.innerHTML = '';
+                    tasksList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <div class="empty-state-title">Error Loading Tasks</div>
+                            <div class="empty-state-text">${escapeHtml(data.message || 'Failed to load tasks')}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading member tasks:', error);
+                statsContainer.innerHTML = '';
+                tasksList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <div class="empty-state-title">Error Loading Tasks</div>
+                        <div class="empty-state-text">Please try again later.</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Close member tasks modal
+        function closeMemberTasksModal() {
+            const modal = document.getElementById('memberTasksModal');
+            modal.classList.remove('active');
         }
 
         // Close modal on outside click

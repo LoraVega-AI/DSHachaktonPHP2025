@@ -124,9 +124,48 @@
         .main-wrapper {
             flex: 1;
             margin-left: 240px;
-            padding: 32px;
+            display: flex;
+            flex-direction: column;
             width: calc(100% - 240px);
             overflow-y: auto;
+        }
+
+        .search-bar {
+            padding: 24px 32px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--secondary-bg);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .control-button {
+            padding: 12px;
+            min-width: 44px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-button:hover {
+            background: var(--surface);
+            border-color: var(--border-color);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 32px;
         }
 
         .dashboard-header {
@@ -433,25 +472,58 @@
         </aside>
 
         <div class="main-wrapper">
-            <div class="dashboard-header">
-                <h1>My Tasks</h1>
-                <p>View and manage your assigned reports</p>
+            <div class="search-bar">
+                <div class="control-buttons">
+                    <button class="control-button" onclick="window.location.href='settings.html'" title="Settings">
+                        <span style="font-size: 18px;">⚙️</span>
+                    </button>
+                    <button class="control-button" onclick="window.location.href='profile.html'" title="Profile">
+                        <span style="font-size: 18px;">👤</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- Tasks Content -->
-            <div class="reports-section">
-                <div class="filter-bar">
-                    <button class="filter-button active" onclick="filterTasks('all')">All</button>
-                    <button class="filter-button" onclick="filterTasks('pending')">Pending</button>
-                    <button class="filter-button" onclick="filterTasks('in_progress')">In Progress</button>
-                    <button class="filter-button" onclick="filterTasks('solved')">Solved</button>
+            <div class="content-area">
+                <div class="dashboard-header">
+                    <h1>My Tasks</h1>
+                    <p>View and manage your assigned reports</p>
                 </div>
 
+                <!-- Tasks Content -->
+                <!-- Active Tasks Section -->
                 <div class="reports-section">
-                    <div class="reports-grid" id="tasksGrid">
+                    <div class="section-header">
+                        <h2 class="section-title">Active Tasks</h2>
+                    </div>
+                    <div class="filter-bar">
+                        <button class="filter-button active" onclick="filterTasks('all', 'active')">All</button>
+                        <button class="filter-button" onclick="filterTasks('pending', 'active')">Pending</button>
+                        <button class="filter-button" onclick="filterTasks('in_progress', 'active')">In Progress</button>
+                    </div>
+
+                    <div class="reports-grid" id="activeTasksGrid">
                         <div class="empty-state">
                             <div class="empty-state-icon">⏳</div>
-                            <div class="empty-state-title">Loading tasks...</div>
+                            <div class="empty-state-title">Loading active tasks...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Section -->
+                <div class="reports-section">
+                    <div class="section-header">
+                        <h2 class="section-title">History</h2>
+                    </div>
+                    <div class="filter-bar">
+                        <button class="filter-button active" onclick="filterTasks('all', 'history')">All</button>
+                        <button class="filter-button" onclick="filterTasks('solved', 'history')">Solved</button>
+                    </div>
+
+                    <div class="reports-grid" id="historyTasksGrid">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📜</div>
+                            <div class="empty-state-title">No completed tasks yet</div>
+                            <div class="empty-state-text">Tasks you mark as solved will appear here.</div>
                         </div>
                     </div>
                 </div>
@@ -461,7 +533,10 @@
 
     <script>
         let allTasks = [];
-        let currentFilter = 'all';
+        let activeTasks = [];
+        let historyTasks = [];
+        let currentActiveFilter = 'all';
+        let currentHistoryFilter = 'all';
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -529,51 +604,72 @@
                     credentials: 'include'
                 });
                 const data = await response.json();
-                
+
                 if (data.status === 'success') {
                     allTasks = data.assigned_reports || [];
+                    // Separate tasks into active and history
+                    activeTasks = allTasks.filter(task => task.status !== 'solved');
+                    historyTasks = allTasks.filter(task => task.status === 'solved');
                     renderTasks();
                 }
             } catch (error) {
                 console.error('Failed to load tasks:', error);
-                document.getElementById('tasksGrid').innerHTML = `
+                const errorHtml = `
                     <div class="empty-state">
                         <div class="empty-state-icon">❌</div>
                         <div class="empty-state-title">Error Loading Tasks</div>
                         <div class="empty-state-text">Please try refreshing the page.</div>
                     </div>
                 `;
+                document.getElementById('activeTasksGrid').innerHTML = errorHtml;
+                document.getElementById('historyTasksGrid').innerHTML = errorHtml;
             }
         }
 
-        function filterTasks(status) {
-            currentFilter = status;
-            
-            document.querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
+        function filterTasks(status, section) {
+            if (section === 'active') {
+                currentActiveFilter = status;
+                // Remove active class from all active section filter buttons
+                document.querySelectorAll('#activeTasksGrid').closest('.reports-section').querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                event.target.classList.add('active');
+            } else if (section === 'history') {
+                currentHistoryFilter = status;
+                // Remove active class from all history section filter buttons
+                document.querySelectorAll('#historyTasksGrid').closest('.reports-section').querySelectorAll('.filter-button').forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                event.target.classList.add('active');
+            }
+
             renderTasks();
         }
 
         function renderTasks() {
-            const container = document.getElementById('tasksGrid');
-            
-            let filteredTasks = allTasks;
-            if (currentFilter !== 'all') {
-                filteredTasks = allTasks.filter(task => task.status === currentFilter);
+            // Render active tasks
+            renderActiveTasks();
+            // Render history tasks
+            renderHistoryTasks();
+        }
+
+        function renderActiveTasks() {
+            const container = document.getElementById('activeTasksGrid');
+
+            let filteredTasks = activeTasks;
+            if (currentActiveFilter !== 'all') {
+                filteredTasks = activeTasks.filter(task => task.status === currentActiveFilter);
             }
-            
+
             if (filteredTasks.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📭</div>
-                        <div class="empty-state-title">No Tasks Found</div>
-                        <div class="empty-state-text">${currentFilter === 'all' ? 'You don\'t have any assigned tasks yet.' : `No ${currentFilter.replace('_', ' ')} tasks.`}</div>
+                        <div class="empty-state-title">No Active Tasks</div>
+                        <div class="empty-state-text">${currentActiveFilter === 'all' ? 'You don\'t have any active tasks.' : `No ${currentActiveFilter.replace('_', ' ')} tasks.`}</div>
                     </div>
                 `;
                 return;
             }
-            
+
             container.innerHTML = filteredTasks.map(task => `
                 <div class="report-card">
                     <div class="report-header">
@@ -590,15 +686,51 @@
                         <span class="report-status status-${task.status}">${formatStatus(task.status)}</span>
                         <span class="report-time">${formatTime(task.created_at)}</span>
                     </div>
-                    ${task.status !== 'solved' ? `
-                        <button class="action-button" onclick="markAsSolved(${task.id}, '${task.report_type}')">
-                            Mark as Solved
-                        </button>
-                    ` : `
-                        <button class="action-button solved" disabled>
-                            ✓ Solved
-                        </button>
-                    `}
+                    <button class="action-button" onclick="markAsSolved(${task.id}, '${task.report_type}')">
+                        Mark as Solved
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderHistoryTasks() {
+            const container = document.getElementById('historyTasksGrid');
+
+            let filteredTasks = historyTasks;
+            if (currentHistoryFilter !== 'all') {
+                filteredTasks = historyTasks.filter(task => task.status === currentHistoryFilter);
+            }
+
+            if (filteredTasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📜</div>
+                        <div class="empty-state-title">No Completed Tasks</div>
+                        <div class="empty-state-text">${currentHistoryFilter === 'all' ? 'Tasks you mark as solved will appear here.' : `No ${currentHistoryFilter} tasks in history.`}</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredTasks.map(task => `
+                <div class="report-card">
+                    <div class="report-header">
+                        <div>
+                            <div class="report-title">${escapeHtml(task.title)}</div>
+                            <div class="report-category">${task.category || 'General'}</div>
+                        </div>
+                        <span class="severity-badge severity-${(task.severity || 'medium').toLowerCase()}">
+                            ${task.severity || 'MEDIUM'}
+                        </span>
+                    </div>
+                    <div class="report-description">${escapeHtml(task.description || 'No description')}</div>
+                    <div class="report-meta">
+                        <span class="report-status status-${task.status}">${formatStatus(task.status)}</span>
+                        <span class="report-time">${formatTime(task.created_at)}</span>
+                    </div>
+                    <button class="action-button solved" disabled>
+                        ✓ Solved
+                    </button>
                 </div>
             `).join('');
         }
@@ -607,7 +739,7 @@
             if (!confirm('Mark this task as solved?')) {
                 return;
             }
-            
+
             try {
                 const response = await fetch('update_report_status.php', {
                     method: 'POST',
@@ -619,12 +751,25 @@
                         status: 'solved'
                     })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.status === 'success') {
                     alert('Task marked as solved!');
-                    loadTasks(); // Reload tasks
+
+                    // Move task from active to history
+                    const taskIndex = activeTasks.findIndex(task => task.id == reportId && task.report_type === reportType);
+                    if (taskIndex !== -1) {
+                        const solvedTask = activeTasks.splice(taskIndex, 1)[0];
+                        solvedTask.status = 'solved'; // Update status locally
+                        historyTasks.unshift(solvedTask); // Add to beginning of history
+
+                        // Re-render both sections
+                        renderTasks();
+                    } else {
+                        // Fallback: reload all tasks if we can't find the task locally
+                        loadTasks();
+                    }
                 } else {
                     alert('Error: ' + (data.message || 'Failed to update status'));
                 }

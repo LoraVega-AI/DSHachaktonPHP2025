@@ -28,37 +28,20 @@ try {
     $pdo = getDBConnection();
     $currentUserId = getCurrentUserId();
     
-    // If user is crew manager (not admin), only show crew members (not admins)
-    // If user is admin, show both crew members and admins
-    if ($userRole === 'crew') {
-        // Crew managers can only see and assign to crew members, not admins
-        $stmt = $pdo->query("
-            SELECT 
-                id,
-                username,
-                email,
-                role,
-                trust_score,
-                created_at
-            FROM users 
-            WHERE role = 'crew'
-            ORDER BY username ASC
-        ");
-    } else {
-        // Admins can see both crew members and admins
-        $stmt = $pdo->query("
-            SELECT 
-                id,
-                username,
-                email,
-                role,
-                trust_score,
-                created_at
-            FROM users 
-            WHERE role IN ('crew', 'admin')
-            ORDER BY role DESC, username ASC
-        ");
-    }
+    // Only show crew members in crew management (not admins)
+    // This applies to both crew managers and admins viewing the crew management page
+    $stmt = $pdo->query("
+        SELECT
+            id,
+            username,
+            email,
+            role,
+            trust_score,
+            created_at
+        FROM users
+        WHERE role = 'crew'
+        ORDER BY username ASC
+    ");
     
     $crewMembers = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
