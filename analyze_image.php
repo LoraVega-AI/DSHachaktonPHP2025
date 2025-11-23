@@ -118,6 +118,24 @@ CRITICAL RULES:
 REQUIRED OUTPUT FORMAT - Return ONLY valid JSON:
 
 {
+  \"confidence_score\": [NUMBER 0-100 representing confidence percentage in the primary detection],
+  \"top_detections\": [
+    {
+      \"detection_name\": \"[Name of the detected issue]\",
+      \"confidence\": [NUMBER 0-100],
+      \"description\": \"[Brief description]\"
+    },
+    {
+      \"detection_name\": \"[Second most likely detection]\",
+      \"confidence\": [NUMBER 0-100],
+      \"description\": \"[Brief description]\"
+    },
+    {
+      \"detection_name\": \"[Third most likely detection]\",
+      \"confidence\": [NUMBER 0-100],
+      \"description\": \"[Brief description]\"
+    }
+  ],
   \"unified_sound_event_identification\": {
     \"primary_sound_event\": \"[Description of what you see in the image - e.g., 'Crack in concrete wall', 'Leaking pipe', 'Damaged equipment']\",
     \"detected_signatures\": [
@@ -149,6 +167,8 @@ REQUIRED OUTPUT FORMAT - Return ONLY valid JSON:
 }
 
 IMPORTANT:
+- CRITICAL: Estimate confidence_score (0-100) based on how certain you are about the primary detection
+- CRITICAL: Provide top_detections array with top 3 possible detections, each with confidence (0-100). If confidence_score >= 80, focus on the primary detection. If < 80, provide 3 alternative possibilities with their confidence scores
 - Analyze the image carefully for any signs of infrastructure issues, damage, wear, or safety concerns
 - Be specific about what you see (cracks, leaks, corrosion, damage, etc.)
 - Assess the severity based on what could happen if the issue is not addressed
@@ -264,9 +284,18 @@ IMPORTANT:
         $risk_level = 'LOW';
     }
 
+    // Extract confidence-based metrics from LLM response
+    $llm_confidence = isset($diagnosis_content['confidence_score']) ? floatval($diagnosis_content['confidence_score']) : null;
+    $top_detections = isset($diagnosis_content['top_detections']) && is_array($diagnosis_content['top_detections']) ? $diagnosis_content['top_detections'] : [];
+
+    // Use LLM-provided confidence or default to 85%
+    $confidence_score = $llm_confidence !== null ? ($llm_confidence / 100.0) : 0.85;
+
     $transformed_diagnosis = [
         "audio_source" => "Infrastructure Image Analysis System",
         "analysis_goal" => "Detect and classify infrastructure issues, damage, and safety concerns from images",
+        "confidence_score" => $confidence_score,
+        "top_detections" => $top_detections,
         "detected_signatures" => [],
         "executive_conclusion" => $diagnosis_content['conclusion_and_safety_verdict']['analysis_summary'] ?? 'Image analysis completed.',
         "risk_assessment" => [
@@ -337,7 +366,7 @@ IMPORTANT:
             $who_to_contact = $risk_assessment['who_to_contact'] ?? '';
             
             // Image analysis doesn't have audio metrics, so set defaults
-            $confidence_score = 0.85; // 85% default confidence for image analysis
+            // Use LLM-provided confidence_score (already extracted above)
             $rms_level = 0.0; // No audio data
             $spectral_centroid = null;
             $frequency = null;

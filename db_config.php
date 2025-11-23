@@ -401,10 +401,256 @@ function initializeGeneralReportsTable() {
     }
 }
 
+// Initialize media_files table for separate media storage
+function initializeMediaFilesTable() {
+    try {
+        $pdo = getDBConnection();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS media_files (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            report_id INT NOT NULL,
+            report_type ENUM('analysis', 'general') NOT NULL,
+            file_path VARCHAR(255) NOT NULL,
+            file_type ENUM('image', 'audio') NOT NULL,
+            uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_report (report_id, report_type),
+            INDEX idx_type (file_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $pdo->exec($sql);
+        error_log("✅ Table 'media_files' checked/created successfully");
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("❌ Media files table initialization failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Initialize audit_log table for tracking changes
+function initializeAuditLogTable() {
+    try {
+        $pdo = getDBConnection();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS audit_log (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            report_id INT NOT NULL,
+            report_type ENUM('analysis', 'general') NOT NULL,
+            user_id INT NOT NULL,
+            action_type VARCHAR(50) NOT NULL,
+            old_value TEXT,
+            new_value TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_report (report_id, report_type),
+            INDEX idx_user (user_id),
+            INDEX idx_action (action_type),
+            INDEX idx_timestamp (timestamp),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $pdo->exec($sql);
+        error_log("✅ Table 'audit_log' checked/created successfully");
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("❌ Audit log table initialization failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Initialize user_watch_zones table for proximity alerts
+function initializeWatchZonesTable() {
+    try {
+        $pdo = getDBConnection();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS user_watch_zones (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            latitude DECIMAL(10,8) NOT NULL,
+            longitude DECIMAL(11,8) NOT NULL,
+            radius_meters INT NOT NULL DEFAULT 1000,
+            alert_frequency ENUM('realtime', 'daily', 'weekly') DEFAULT 'realtime',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_user (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $pdo->exec($sql);
+        error_log("✅ Table 'user_watch_zones' checked/created successfully");
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("❌ Watch zones table initialization failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Initialize crew_schedule table for crew availability
+function initializeCrewScheduleTable() {
+    try {
+        $pdo = getDBConnection();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS crew_schedule (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            day_of_week INT NOT NULL COMMENT '0=Sunday, 1=Monday, ..., 6=Saturday',
+            start_time TIME NOT NULL,
+            end_time TIME NOT NULL,
+            is_available BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            INDEX idx_user_day (user_id, day_of_week),
+            UNIQUE KEY unique_user_day (user_id, day_of_week)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $pdo->exec($sql);
+        error_log("✅ Table 'crew_schedule' checked/created successfully");
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("❌ Crew schedule table initialization failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Initialize compliance_rules table for regulatory compliance
+function initializeComplianceRulesTable() {
+    try {
+        $pdo = getDBConnection();
+        
+        $sql = "CREATE TABLE IF NOT EXISTS compliance_rules (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category VARCHAR(50) NOT NULL,
+            max_response_time_hours INT NOT NULL,
+            severity_threshold VARCHAR(20),
+            description TEXT,
+            INDEX idx_category (category)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        
+        $pdo->exec($sql);
+        error_log("✅ Table 'compliance_rules' checked/created successfully");
+        
+        // Seed default compliance rules if table is empty
+        $count = $pdo->query("SELECT COUNT(*) FROM compliance_rules")->fetchColumn();
+        if ($count == 0) {
+            $rules = [
+                ['Water & Sewage', 4, 'CRITICAL', 'Emergency water/sewage issues require immediate response'],
+                ['Roads & Infrastructure', 24, 'HIGH', 'Major road issues must be addressed within 24 hours'],
+                ['Street Lighting & Electricity', 48, 'MEDIUM', 'Electrical issues require 2-day response'],
+                ['Public Safety & Vandalism', 12, 'HIGH', 'Safety issues require urgent attention'],
+                ['Sanitation & Waste Management', 48, 'MEDIUM', 'Waste issues require 2-day response']
+            ];
+            
+            $stmt = $pdo->prepare("INSERT INTO compliance_rules (category, max_response_time_hours, severity_threshold, description) VALUES (?, ?, ?, ?)");
+            foreach ($rules as $rule) {
+                $stmt->execute($rule);
+            }
+            error_log("✅ Seeded default compliance rules");
+        }
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("❌ Compliance rules table initialization failed: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Add assignment and status fields to report tables
+function addReportEnhancementFields() {
+    try {
+        $pdo = getDBConnection();
+        
+        // Update analysis_reports table
+        $tables = ['analysis_reports', 'general_reports'];
+        
+        foreach ($tables as $table) {
+            // Add assigned_to_user_id
+            try {
+                $check = $pdo->query("SHOW COLUMNS FROM $table LIKE 'assigned_to_user_id'");
+                if ($check->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE $table ADD COLUMN assigned_to_user_id INT DEFAULT NULL AFTER status");
+                    $pdo->exec("ALTER TABLE $table ADD INDEX idx_assigned_to (assigned_to_user_id)");
+                    $pdo->exec("ALTER TABLE $table ADD FOREIGN KEY (assigned_to_user_id) REFERENCES users(id) ON DELETE SET NULL");
+                    error_log("✅ Added assigned_to_user_id to $table");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: assigned_to_user_id check for $table: " . $e->getMessage());
+            }
+            
+            // Add eta_solved
+            try {
+                $check = $pdo->query("SHOW COLUMNS FROM $table LIKE 'eta_solved'");
+                if ($check->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE $table ADD COLUMN eta_solved DATETIME DEFAULT NULL AFTER assigned_to_user_id");
+                    error_log("✅ Added eta_solved to $table");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: eta_solved check for $table: " . $e->getMessage());
+            }
+            
+            // Add is_triangulated for analysis_reports
+            if ($table === 'analysis_reports') {
+                try {
+                    $check = $pdo->query("SHOW COLUMNS FROM $table LIKE 'is_triangulated'");
+                    if ($check->rowCount() === 0) {
+                        $pdo->exec("ALTER TABLE $table ADD COLUMN is_triangulated BOOLEAN DEFAULT FALSE AFTER status");
+                        $pdo->exec("ALTER TABLE $table ADD COLUMN cluster_id INT DEFAULT NULL AFTER is_triangulated");
+                        error_log("✅ Added triangulation fields to $table");
+                    }
+                } catch (PDOException $e) {
+                    error_log("Note: triangulation fields check: " . $e->getMessage());
+                }
+            }
+            
+            // Add weather_data column
+            try {
+                $check = $pdo->query("SHOW COLUMNS FROM $table LIKE 'weather_data'");
+                if ($check->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE $table ADD COLUMN weather_data JSON DEFAULT NULL");
+                    error_log("✅ Added weather_data to $table");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: weather_data check: " . $e->getMessage());
+            }
+            
+            // Add compliance_status column
+            try {
+                $check = $pdo->query("SHOW COLUMNS FROM $table LIKE 'compliance_status'");
+                if ($check->rowCount() === 0) {
+                    $pdo->exec("ALTER TABLE $table ADD COLUMN compliance_status ENUM('compliant', 'at_risk', 'overdue') DEFAULT 'compliant'");
+                    error_log("✅ Added compliance_status to $table");
+                }
+            } catch (PDOException $e) {
+                error_log("Note: compliance_status check: " . $e->getMessage());
+            }
+            
+            // Add composite index for crew queries
+            try {
+                $pdo->exec("ALTER TABLE $table ADD INDEX idx_status_assigned (status, assigned_to_user_id)");
+                error_log("✅ Added composite index for crew queries to $table");
+            } catch (PDOException $e) {
+                // Index might already exist
+            }
+        }
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("❌ Adding report enhancement fields failed: " . $e->getMessage());
+        return false;
+    }
+}
+
 // Call initialization on include (suppress errors to prevent breaking if DB not ready)
 // Initialize users table first to ensure it exists before adding foreign keys
 @initializeUsersTable();
 @initializeDatabase();
 @initializeGeneralReportsTable();
+@initializeMediaFilesTable();
+@initializeAuditLogTable();
+@initializeWatchZonesTable();
+@initializeComplianceRulesTable();
+@initializeCrewScheduleTable();
+@addReportEnhancementFields();
 ?>
 

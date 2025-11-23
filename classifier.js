@@ -6,7 +6,7 @@ const MODEL_URL = 'https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1';
 const REPORT_ENDPOINT = 'analyze.php';
 const ANALYSIS_INTERVAL_MS = 1000; // 1 second intervals for data collection
 const CONFIDENCE_THRESHOLD = 0.35; // Higher threshold for better accuracy
-const AUDIO_COLLECTION_DURATION = 8000; // Collect 8 seconds of audio before LLM analysis
+const AUDIO_COLLECTION_DURATION = 10000; // Collect 10 seconds of audio before LLM analysis
 const REPORT_UPDATE_INTERVAL = 30000; // Update report every 30 seconds during monitoring
 
 // --- GLOBAL STATE ---
@@ -789,12 +789,31 @@ function formatAnalysisResults(diagnosis) {
     if (hazardEntriesContainer) {
         hazardEntriesContainer.innerHTML = '';
 
-        // Process detected signatures
+        // Process detected signatures with confidence-based conditional display
+        const confidence = parseFloat(diagnosis.confidence_score) || 0;
+        const showMultiple = confidence < 0.8;
+        
         if (diagnosis.detected_signatures && diagnosis.detected_signatures.length > 0) {
-            diagnosis.detected_signatures.forEach(signature => {
-                const hazardEntry = createHazardEntry(signature, diagnosis);
-                hazardEntriesContainer.appendChild(hazardEntry);
-            });
+            if (showMultiple && diagnosis.top_detections && diagnosis.top_detections.length > 0) {
+                // Show top 3 detections when confidence < 80%
+                diagnosis.top_detections.slice(0, 3).forEach((detection, index) => {
+                    const signature = {
+                        signature_name: detection.detection_name || diagnosis.detected_signatures[0].signature_name,
+                        classification: detection.description || diagnosis.detected_signatures[0].classification
+                    };
+                    const hazardEntry = createHazardEntry(signature, {
+                        ...diagnosis,
+                        confidence_score: detection.confidence / 100.0
+                    });
+                    hazardEntriesContainer.appendChild(hazardEntry);
+                });
+            } else {
+                // Show only primary detection when confidence >= 80%
+                diagnosis.detected_signatures.slice(0, 1).forEach(signature => {
+                    const hazardEntry = createHazardEntry(signature, diagnosis);
+                    hazardEntriesContainer.appendChild(hazardEntry);
+                });
+            }
         } else {
             // Create default hazard entry for demonstration
             const defaultSignature = {
@@ -833,6 +852,29 @@ function formatAnalysisResults(diagnosis) {
     // Add risk assessment summary at the end
     addRiskAssessmentSummary(diagnosis);
 
+    // Store diagnosis data globally for report generation
+    if (typeof window !== 'undefined') {
+        window.currentAudioAnalysis = diagnosis;
+        console.log('💾 Audio analysis stored in window.currentAudioAnalysis');
+        
+        // Trigger a custom event so the page can update its local variable
+        if (typeof document !== 'undefined') {
+            const event = new CustomEvent('audioAnalysisComplete', { 
+                detail: { diagnosis: diagnosis } 
+            });
+            document.dispatchEvent(event);
+        }
+        
+        // Show Make Report button if analysis is complete
+        const makeReportContainer = document.getElementById('audioMakeReportContainer');
+        if (makeReportContainer) {
+            makeReportContainer.style.display = 'block';
+            console.log('✅ Make Report button shown for audio analysis');
+        } else {
+            console.warn('⚠️ audioMakeReportContainer not found in DOM');
+        }
+    }
+
     // Return empty string since we're updating DOM directly
     return '';
 }
@@ -841,6 +883,34 @@ function createHazardEntry(signature, diagnosis) {
     const entry = document.createElement('div');
     entry.className = 'hazard-entry';
 
+    // Get confidence score (0-1 scale) for internal logic only (not displayed)
+    const confidenceRaw = diagnosis.confidence_score;
+    const confidence = (confidenceRaw !== null && confidenceRaw !== undefined && !isNaN(confidenceRaw)) ? 
+                     parseFloat(confidenceRaw) : 
+                     0.5; // Default to 50% for internal logic
+    
+    // Determine if we should show multiple detections (confidence < 80%)
+    const showMultiple = confidence < 0.8;
+    
+    // Get detections to show: top 3 if confidence < 80%, otherwise don't show alternatives
+    const topDetections = diagnosis.top_detections || [];
+    let detectionsHtml = '';
+    
+    // Only show alternative detections if confidence < 80% and we have top_detections
+    if (showMultiple && topDetections.length > 0) {
+        topDetections.slice(0, 3).forEach((detection, index) => {
+            if (index > 0) { // Skip the first one as it's the primary
+                detectionsHtml += `
+                    <div class="detection-item" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                        <div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 8px; font-weight: 600;">Alternative ${index}: ${detection.detection_name || 'Unknown'}</div>
+                        ${detection.description ? `<div style="color: var(--text-secondary); margin-bottom: 8px;">${detection.description}</div>` : ''}
+                        ${detection.confidence !== undefined ? `<div style="color: var(--text-secondary); font-size: 0.85em;">Confidence: ${detection.confidence}%</div>` : ''}
+                    </div>
+                `;
+            }
+        });
+    }
+
     entry.innerHTML = `
         <div class="hazard-header">
             <div class="hazard-name">${signature.signature_name || 'Unknown Hazard'}</div>
@@ -848,20 +918,7 @@ function createHazardEntry(signature, diagnosis) {
         <div class="hazard-description">
             ${signature.classification || 'Acoustic signature detected requiring analysis.'}
         </div>
-        <div class="hazard-metrics">
-            <div class="metric-item">
-                <div class="metric-label">Confidence</div>
-                <div class="metric-value">${Math.round((diagnosis.confidence_score || 0.5) * 100)}%</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">RMS Level</div>
-                <div class="metric-value">${(diagnosis.rms_level || 0).toFixed(2)}</div>
-            </div>
-            <div class="metric-item">
-                <div class="metric-label">Frequency</div>
-                <div class="metric-value">${Math.round(diagnosis.spectral_centroid || 2400)}Hz</div>
-            </div>
-        </div>
+        ${detectionsHtml ? `<div style="margin-top: 12px;">${detectionsHtml}</div>` : ''}
     `;
 
     return entry;
@@ -1395,6 +1452,7 @@ async function generateLLMReport() {
             // Update UI with the structured report
             console.log('✅ AI Report generated successfully!');
             console.log('📋 Diagnosis data:', result.diagnosis);
+            console.log('📊 Confidence score from LLM:', result.diagnosis?.confidence_score, '(', (result.diagnosis?.confidence_score * 100)?.toFixed(1) + '%)');
             console.log('⚠️ Risk assessment:', result.diagnosis?.risk_assessment);
             
             if (!result.diagnosis) {
@@ -1419,6 +1477,13 @@ async function generateLLMReport() {
                     window.reloadDetectionHistory();
                 }, 500); // Small delay to ensure database save is complete
             }
+
+            // Auto-stop analysis after final result (10 seconds collection + processing)
+            console.log('🛑 Auto-stopping analysis after final result');
+            setTimeout(() => {
+                stopAnalysis();
+                updateStatusMessage('Analysis Complete', 'Final result generated - analysis stopped automatically', 'var(--accent-green)');
+            }, 1000); // Small delay to ensure UI is updated
         } else {
             throw new Error(result.message || 'Analysis failed');
         }
@@ -1487,7 +1552,12 @@ async function generateLLMReport() {
                 }, 500); // Small delay to ensure database save is complete
             }
 
-            updateStatusMessage('Local Analysis Complete', 'Analysis completed using local processing - monitoring active', 'var(--accent-green)');
+            // Auto-stop analysis after final result
+            console.log('🛑 Auto-stopping analysis after final result (local)');
+            setTimeout(() => {
+                stopAnalysis();
+                updateStatusMessage('Analysis Complete', 'Final result generated - analysis stopped automatically', 'var(--accent-green)');
+            }, 1000); // Small delay to ensure UI is updated
 
             console.log('✅ Local TensorFlow.js LLM analysis completed successfully');
 

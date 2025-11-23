@@ -14,7 +14,34 @@ require_once __DIR__ . '/db_config.php';
  */
 function startSession() {
     if (session_status() === PHP_SESSION_NONE) {
+        // Configure session cookie to persist across tabs and windows
+        ini_set('session.cookie_httponly', 1);
+        ini_set('session.cookie_samesite', 'Lax');
+        ini_set('session.use_only_cookies', 1);
+        ini_set('session.cookie_lifetime', 0); // Session cookie expires when browser closes
+        ini_set('session.gc_maxlifetime', 7200); // Session data lives for 2 hours
+        
+        // Set session cookie parameters before starting
+        session_set_cookie_params([
+            'lifetime' => 0, // Until browser closes
+            'path' => '/',
+            'domain' => '',
+            'secure' => false, // Set to true if using HTTPS
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ]);
+        
+        // Start session with proper configuration
         session_start();
+        
+        // Regenerate session ID periodically for security
+        if (!isset($_SESSION['created'])) {
+            $_SESSION['created'] = time();
+        } else if (time() - $_SESSION['created'] > 1800) {
+            // Regenerate session ID every 30 minutes
+            session_regenerate_id(true);
+            $_SESSION['created'] = time();
+        }
     }
 }
 
@@ -57,16 +84,17 @@ function getUserRole() {
 
 /**
  * Check if user has a specific role or higher
- * @param string $requiredRole Required role (user/admin)
+ * @param string $requiredRole Required role (user/crew/admin)
  * @return bool True if user has required role
  */
 function hasRole($requiredRole) {
     $currentRole = getUserRole();
     
-    // Define role hierarchy
+    // Define role hierarchy (crew is parallel to user, not hierarchical)
     $roleHierarchy = [
         'guest' => 0,
         'user' => 1,
+        'crew' => 1,
         'admin' => 2
     ];
     
@@ -74,6 +102,112 @@ function hasRole($requiredRole) {
     $requiredLevel = $roleHierarchy[$requiredRole] ?? 99;
     
     return $currentLevel >= $requiredLevel;
+}
+
+/**
+ * Check if user is a crew member
+ * @return bool True if user has crew role
+ */
+function isCrewMember() {
+    return getUserRole() === 'crew';
+}
+
+/**
+ * Check if user is admin or crew
+ * @return bool True if user is admin or crew
+ */
+function isAdminOrCrew() {
+    $role = getUserRole();
+    return $role === 'admin' || $role === 'crew';
+}
+
+/**
+ * Check if user can access a specific report
+ * @param int $reportId Report ID
+ * @param string $reportType 'analysis' or 'general'
+ * @param int $userId User ID (optional, defaults to current user)
+ * @return bool True if user can access the report
+ */
+function canAccessReport($reportId, $reportType = 'general', $userId = null) {
+    if ($userId === null) {
+        $userId = getCurrentUserId();
+    }
+    
+    $role = getUserRole();
+    
+    // Admin can access everything
+    if ($role === 'admin') {
+        return true;
+    }
+    
+    // Guest can only view
+    if ($role === 'guest') {
+        return true; // Read-only access
+    }
+    
+    // User can access their own reports
+    if ($role === 'user') {
+        try {
+            $pdo = getDBConnection();
+            $table = $reportType === 'analysis' ? 'analysis_reports' : 'general_reports';
+            $stmt = $pdo->prepare("SELECT user_id FROM $table WHERE id = ?");
+            $stmt->execute([$reportId]);
+            $report = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($report && $report['user_id'] == $userId) {
+                return true;
+            }
+        } catch (PDOException $e) {
+            error_log("Error checking report access: " . $e->getMessage());
+        }
+        return false;
+    }
+    
+    // Crew can access all reports (admin-like privileges)
+    if ($role === 'crew') {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Check if user can modify a specific report
+ * @param int $reportId Report ID
+ * @param string $reportType 'analysis' or 'general'
+ * @param int $userId User ID (optional, defaults to current user)
+ * @return bool True if user can modify the report
+ */
+function canModifyReport($reportId, $reportType = 'general', $userId = null) {
+    if ($userId === null) {
+        $userId = getCurrentUserId();
+    }
+    
+    $role = getUserRole();
+    
+    // Admin and crew can modify everything (crew has admin-like privileges)
+    if ($role === 'admin' || $role === 'crew') {
+        return true;
+    }
+    
+    // Users can modify their own reports
+    if ($role === 'user') {
+        try {
+            $pdo = getDBConnection();
+            $table = $reportType === 'analysis' ? 'analysis_reports' : 'general_reports';
+            $stmt = $pdo->prepare("SELECT user_id FROM $table WHERE id = ?");
+            $stmt->execute([$reportId]);
+            $report = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            return $report && $report['user_id'] == $userId;
+        } catch (PDOException $e) {
+            error_log("Error checking user modify permission: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    // Guests cannot modify reports (only view)
+    return false;
 }
 
 /**

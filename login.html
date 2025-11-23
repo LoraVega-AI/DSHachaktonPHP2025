@@ -317,6 +317,10 @@
                     <div class="demo-role">👤 User Account</div>
                     <div class="demo-credentials">john_doe / john123</div>
                 </div>
+                <div class="demo-account" onclick="loginDemo('crew_demo', 'crew123')">
+                    <div class="demo-role">🔧 Crew Account</div>
+                    <div class="demo-credentials">crew_demo / crew123</div>
+                </div>
             </div>
 
             <div class="link-section">
@@ -353,9 +357,11 @@
                 if (data.status === 'success') {
                     messageContainer.innerHTML = '<div class="message success">✓ Login successful! Redirecting...</div>';
                     setTimeout(() => {
-                        // Redirect admins to general page, others to monitor page
+                        // Redirect based on role
                         if (data.user && data.user.role === 'admin') {
                             window.location.href = 'general.html';
+                        } else if (data.user && data.user.role === 'crew') {
+                            window.location.href = 'crew_dashboard.html';
                         } else {
                             window.location.href = 'index.html';
                         }

@@ -367,6 +367,24 @@ CRITICAL: This analysis identifies exactly ONE primary audio event. All referenc
 REQUIRED OUTPUT FORMAT - Return ONLY valid JSON:
 
 {
+  \"confidence_score\": [MANDATORY: NUMBER 10-100. This is the MOST IMPORTANT field and MUST ALWAYS be provided. NEVER return 0. Assess how confident you are in the primary detection based on: signal quality, consistency, pattern match, and acoustic characteristics. Use the \"Confidence Score\" value from the data as a starting point, then adjust based on your analysis. MUST be a number between 10-100 (minimum 10, never 0). Typical ranges: Low confidence (20-50) if signal is weak/ambiguous, Medium (50-75) if reasonably certain, High (75-95) if very confident. Example: If uncertain but have some signal, use 30-40. If confident, use 70-85. If very confident, use 85-95],
+  \"top_detections\": [
+    {
+      \"detection_name\": \"[Name of the detected sound/issue]\",
+      \"confidence\": [NUMBER 0-100],
+      \"description\": \"[Brief description]\"
+    },
+    {
+      \"detection_name\": \"[Second most likely detection]\",
+      \"confidence\": [NUMBER 0-100],
+      \"description\": \"[Brief description]\"
+    },
+    {
+      \"detection_name\": \"[Third most likely detection]\",
+      \"confidence\": [NUMBER 0-100],
+      \"description\": \"[Brief description]\"
+    }
+  ],
   \"unified_sound_event_identification\": {
     \"primary_sound_event\": \"[Clear explanation in everyday language: What sound was detected? What does it sound like? What is likely causing it? Example: 'A hissing sound was detected, similar to steam escaping from a pipe. This is likely caused by a pressure leak or steam release from plumbing or heating systems.' - 3-4 sentences. NO technical terms]\",
     \"yamnet_confirmation\": \"[Simple explanation in plain language - what the sound is and how we know - 2-3 sentences, NO technical terms]\",
@@ -413,6 +431,18 @@ COMPREHENSIVE ACOUSTIC ANALYSIS DATA:
 " . $input_data_text . "
 
 INSTRUCTIONS:
+- CRITICAL: The confidence_score is MANDATORY and the MOST IMPORTANT metric. You MUST ALWAYS provide it and it MUST NEVER be 0.
+- CRITICAL: confidence_score MUST be a number between 10-100 (minimum 10, never 0 or null). Provide an accurate confidence score based on:
+  * Signal quality and consistency from the data
+  * How well the acoustic pattern matches known signatures
+  * The clarity and strength of the detection
+  * Use the "Confidence Score" from the data as a baseline, but adjust based on your analysis
+  * Be realistic: Low confidence (20-50) if signal is weak or ambiguous, Medium (50-75) if reasonably certain, High (75-95) if very confident
+  * If you're completely uncertain but have some signal, use 10-20. NEVER use 0.
+- VALIDATION: Before returning JSON, verify confidence_score is a number between 10-100. If you cannot determine confidence, use 30 as a conservative estimate, never 0.
+- CRITICAL: Provide top_detections array with top 3 possible detections, each with confidence (0-100). 
+  * If confidence_score >= 80: Focus on the primary detection, but still provide 2-3 alternatives with lower confidence scores
+  * If confidence_score < 80: Provide 3 alternative possibilities with their individual confidence scores, showing what else it might be
 - CRITICAL: Explain what the sound is and what's causing it in plain language. Don't use technical terms.
 - In primary_sound_event: Describe what the sound sounds like and what is likely causing it (e.g., 'hissing from a steam leak', 'grinding from worn machinery', 'gurgling from plumbing')
 - In analysis_summary: Explain what was detected, what it sounds like, what's causing it, and whether it's dangerous
@@ -501,7 +531,29 @@ if ($http_code !== 200) {
     }
     
     if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log("❌ JSON Parse Error: " . json_last_error_msg());
+        error_log("❌ Raw response snippet: " . substr($raw_content, 0, 1000));
         throw new Exception("LLM did not return valid JSON: " . json_last_error_msg());
+    }
+    
+    // Validate that we got a valid response structure
+    if (!is_array($diagnosis_content)) {
+        error_log("❌ LLM response is not an array. Type: " . gettype($diagnosis_content));
+        error_log("❌ Response content: " . substr($raw_content, 0, 1000));
+        throw new Exception("LLM did not return valid JSON structure");
+    }
+    
+    // Log raw response for debugging (first 500 chars)
+    error_log("🔍 LLM Raw Response (first 500 chars): " . substr($raw_content, 0, 500));
+    
+    // Validate confidence_score exists and is valid
+    if (!isset($diagnosis_content['confidence_score'])) {
+        error_log("❌ LLM response missing confidence_score field!");
+        error_log("❌ Available fields: " . implode(', ', array_keys($diagnosis_content)));
+        error_log("❌ Full response structure: " . json_encode($diagnosis_content, JSON_PRETTY_PRINT));
+    } else {
+        $raw_confidence = $diagnosis_content['confidence_score'];
+        error_log("🔍 LLM provided confidence_score: " . var_export($raw_confidence, true) . " (type: " . gettype($raw_confidence) . ")");
     }
 
     // Transform comprehensive LLM response to frontend-compatible format
@@ -517,9 +569,53 @@ if ($http_code !== 200) {
         $risk_level = 'LOW';
     }
 
+    // Extract confidence-based metrics from LLM response
+    // CRITICAL: confidence_score from LLM is 0-100, we need to convert to 0-1 for frontend
+    $llm_confidence = isset($diagnosis_content['confidence_score']) ? floatval($diagnosis_content['confidence_score']) : null;
+    $top_detections = isset($diagnosis_content['top_detections']) && is_array($diagnosis_content['top_detections']) ? $diagnosis_content['top_detections'] : [];
+
+    // Calculate fallback confidence based on signal quality if LLM doesn't provide it
+    $calculated_fallback_confidence = 0.5; // Default 50%
+    if (isset($data['confidence_score']) && floatval($data['confidence_score']) > 0) {
+        $calculated_fallback_confidence = floatval($data['confidence_score']);
+    } elseif (isset($data['signal_consistency']) && floatval($data['signal_consistency']) > 0) {
+        // Use signal consistency as proxy for confidence
+        $calculated_fallback_confidence = min(0.9, max(0.3, floatval($data['signal_consistency'])));
+    } elseif (isset($data['active_frames']) && isset($data['total_frames']) && intval($data['total_frames']) > 0) {
+        // Use active frames ratio as proxy
+        $activity_ratio = intval($data['active_frames']) / intval($data['total_frames']);
+        $calculated_fallback_confidence = min(0.8, max(0.4, $activity_ratio));
+    }
+
+    // Use LLM-provided confidence score (0-100 scale from LLM, convert to 0-1 for frontend)
+    // CRITICAL: Reject 0 as valid - minimum threshold is 10 (if LLM returns < 10, it's likely an error)
+    if ($llm_confidence !== null && $llm_confidence > 0 && $llm_confidence <= 100) {
+        // If LLM returns very low confidence (< 10), it might be an error - use calculated fallback
+        if ($llm_confidence < 10) {
+            error_log("⚠️ LLM returned very low confidence (" . $llm_confidence . "%), using calculated fallback: " . ($calculated_fallback_confidence * 100) . "%");
+            $confidence_score = $calculated_fallback_confidence;
+        } else {
+            $confidence_score = $llm_confidence / 100.0; // Convert 0-100 to 0-1
+            error_log("✅ Using LLM-provided confidence: " . $llm_confidence . "% (converted to " . $confidence_score . " for frontend)");
+        }
+    } else {
+        // Fallback to calculated confidence based on signal quality
+        $confidence_score = $calculated_fallback_confidence;
+        error_log("⚠️ LLM did not provide valid confidence_score (got: " . ($llm_confidence !== null ? $llm_confidence : 'NULL') . "), using calculated fallback: " . ($confidence_score * 100) . "%");
+        error_log("⚠️ Fallback calculation details - original confidence: " . ($data['confidence_score'] ?? 'N/A') . ", signal_consistency: " . ($data['signal_consistency'] ?? 'N/A') . ", active_frames: " . ($data['active_frames'] ?? 'N/A') . "/" . ($data['total_frames'] ?? 'N/A'));
+    }
+    
+    // Final safety check - ensure confidence is never 0
+    if ($confidence_score <= 0) {
+        error_log("❌ CRITICAL: Confidence score is 0 or negative, forcing to 50%");
+        $confidence_score = 0.5;
+    }
+
     $transformed_diagnosis = [
         "audio_source" => "Urban Infrastructure Acoustic Monitoring System",
         "analysis_goal" => "Identify and assess sounds that may indicate infrastructure issues or safety concerns",
+        "confidence_score" => $confidence_score, // 0-1 scale for frontend
+        "top_detections" => $top_detections,
         "detected_signatures" => [
             [
                 "signature_name" => $diagnosis_content['unified_sound_event_identification']['primary_sound_event'] ?? 'Unknown Event',
@@ -588,6 +684,55 @@ if ($http_code !== 200) {
     
     if ($saveResult) {
         error_log("✅ AI report successfully saved to database with full AI-generated content");
+        
+        $reportId = $pdo->lastInsertId();
+        
+        // Validate report for cross-modal correlation (with error handling)
+        try {
+            if ($latitude !== null && $longitude !== null) {
+                require_once __DIR__ . '/validate_reports.php';
+                if (function_exists('validateReport')) {
+                    $validationResult = validateReport($reportId, 'analysis');
+                    if ($validationResult['status'] === 'validated') {
+                        error_log("✅ Cross-modal validation: Report #$reportId validated with " . count($validationResult['correlations']) . " correlations");
+                    }
+                }
+            }
+        } catch (Exception $validationError) {
+            error_log("⚠️ Validation error (non-fatal): " . $validationError->getMessage());
+            // Continue even if validation fails
+        }
+        
+        // Attempt triangulation for acoustic source localization (with error handling)
+        try {
+            require_once __DIR__ . '/triangulate_source.php';
+            if (function_exists('triangulateSource')) {
+                $triangulationResult = triangulateSource($reportId);
+                if ($triangulationResult['status'] === 'triangulated') {
+                    error_log("✅ Triangulation: Report #$reportId part of cluster #" . $triangulationResult['cluster_id'] . 
+                             " with " . $triangulationResult['report_count'] . " reports");
+                }
+            }
+        } catch (Exception $triangulationError) {
+            error_log("⚠️ Triangulation error (non-fatal): " . $triangulationError->getMessage());
+            // Continue even if triangulation fails
+        }
+        
+        // Check proximity alerts (with error handling)
+        try {
+            if ($latitude !== null && $longitude !== null) {
+                require_once __DIR__ . '/check_proximity_alerts.php';
+                if (function_exists('checkProximityAlerts')) {
+                    $alertResult = checkProximityAlerts($reportId, 'analysis', $latitude, $longitude, $severity);
+                    if ($alertResult['alerts_triggered'] > 0) {
+                        error_log("🔔 Proximity alerts: " . $alertResult['alerts_triggered'] . " users notified");
+                    }
+                }
+            }
+        } catch (Exception $alertError) {
+            error_log("⚠️ Proximity alert error (non-fatal): " . $alertError->getMessage());
+            // Continue even if alerts fail
+        }
     } else {
         error_log("❌ WARNING: Failed to save AI report to database, but continuing with response");
     }
@@ -605,6 +750,10 @@ if ($http_code !== 200) {
     }
 
 } catch (Exception $e) {
+    // Log the error for debugging
+    error_log("❌ Error in analyze.php: " . $e->getMessage());
+    error_log("❌ Stack trace: " . $e->getTraceAsString());
+    
     // Fallback: Use rule-based analysis when API fails
     $confidence = floatval($data['confidence_score'] ?? 0.5);
     $rms = floatval($data['rms_level'] ?? 0.1);

@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crew Dashboard - UrbanPulse</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --primary-bg: #0f1419;
+            --secondary-bg: #1a2332;
+            --card-bg: #1e293b;
+            --surface: #253141;
+            --accent-blue: #3b82f6;
+            --accent-blue-light: #60a5fa;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-yellow: #fbbf24;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #ffffff;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --border-light: #475569;
+            --sidebar-bg: #0f1419;
+            --active-bg: rgba(59, 130, 246, 0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            min-height: 100vh;
+            display: flex;
+            background: var(--primary-bg);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-brand {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 48px;
+            letter-spacing: -0.5px;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        /* Main Content */
+        .main-wrapper {
+            flex: 1;
+            margin-left: 240px;
+            padding: 32px;
+            width: calc(100% - 240px);
+            overflow-y: auto;
+        }
+
+        .dashboard-header {
+            margin-bottom: 32px;
+        }
+
+        .dashboard-header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .dashboard-header p {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.1);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .stat-change {
+            font-size: 13px;
+            color: var(--accent-green);
+        }
+
+        /* Reports Section */
+        .reports-section {
+            margin-bottom: 32px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .report-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .report-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .report-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .report-category {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .severity-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .severity-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .severity-high {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .severity-medium {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .severity-low {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .report-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 12px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .report-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .report-status {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .status-pending {
+            background: rgba(251, 191, 36, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .status-in_progress {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        .status-solved {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .report-time {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* Action Buttons */
+        .action-button {
+            background: var(--accent-blue);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-button:hover {
+            background: var(--accent-blue-light);
+            transform: translateY(-2px);
+        }
+
+        .action-button.secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+        }
+
+        .action-button.secondary:hover {
+            background: var(--border-light);
+        }
+
+        /* Map Section */
+        .map-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 32px;
+        }
+
+        #crew-map {
+            width: 100%;
+            height: 500px;
+            border-radius: 12px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        /* Navigation Icon */
+        .nav-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .nav-item.active .nav-icon {
+            background: var(--active-bg);
+            color: var(--accent-blue-light);
+        }
+
+        /* Authentication Styles */
+        .auth-button {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            background: var(--accent-blue);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .auth-button:hover {
+            background: #2563eb;
+        }
+
+        .user-info {
+            padding: 12px 16px;
+            background: var(--surface);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .user-info-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info-role {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .logout-button {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: var(--accent-red);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .logout-button:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="mainSidebar">
+            <div class="sidebar-brand" onclick="window.location.href='index.html'">UrbanPulse</div>
+            
+            <!-- User Info / Login Section -->
+            <div id="authSection">
+                <!-- Guest View -->
+                <div id="guestAuth" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+                    <button class="auth-button" onclick="window.location.href='login.html'">Login</button>
+                    <button class="auth-button" style="background: var(--accent-cyan);" onclick="window.location.href='signup.html'">Register</button>
+                </div>
+                <!-- Logged In View -->
+                <div id="userAuth" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-info-text">
+                            <div class="user-info-name" id="userName">User</div>
+                            <div class="user-info-role" id="userRole">Guest</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="crew_dashboard.html" class="nav-item active" id="navCrewDashboard" data-role="crew-only">
+                    <div class="nav-icon">C</div>
+                    <span>My Tasks</span>
+                </a>
+                <a href="index.html" class="nav-item" data-role="not-admin">
+                    <div class="nav-icon">M</div>
+                    <span>Monitor</span>
+                </a>
+                <a href="map.html" class="nav-item" data-role="all">
+                    <div class="nav-icon">P</div>
+                    <span>Map</span>
+                </a>
+                <a href="general.html" class="nav-item" id="navGeneral" data-role="admin">
+                    <div class="nav-icon">G</div>
+                    <span>General</span>
+                </a>
+                <a href="history.html" class="nav-item" id="navHistory" data-role="admin">
+                    <div class="nav-icon">H</div>
+                    <span>History</span>
+                </a>
+                <a href="rankings.html" class="nav-item" id="navRankings" data-role="user">
+                    <div class="nav-icon">R</div>
+                    <span>Rankings</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-wrapper">
+            <div class="dashboard-header">
+                <h1>Crew Dashboard</h1>
+                <p>Manage your assigned reports and respond to priority issues</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Assigned Reports</div>
+                    <div class="stat-value" id="stat-assigned">0</div>
+                    <div class="stat-change">Total assigned to you</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">In Progress</div>
+                    <div class="stat-value" id="stat-in-progress">0</div>
+                    <div class="stat-change">Currently working on</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Completed Today</div>
+                    <div class="stat-value" id="stat-completed">0</div>
+                    <div class="stat-change">Resolved reports</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Priority Tasks</div>
+                    <div class="stat-value" id="stat-priority">0</div>
+                    <div class="stat-change">High/Critical severity</div>
+                </div>
+            </div>
+
+            <!-- My Active Tasks Section -->
+            <div class="reports-section">
+                <div class="section-header">
+                    <h2 class="section-title">My Active Tasks</h2>
+                </div>
+                <div class="reports-grid" id="assigned-reports">
+                    <!-- Assigned reports will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Available High-Priority Reports -->
+            <div class="reports-section">
+                <div class="section-header">
+                    <h2 class="section-title">Available High-Priority Reports</h2>
+                </div>
+                <div class="reports-grid" id="available-reports">
+                    <!-- Available reports will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Map View -->
+            <div class="map-container">
+                <h2 class="section-title" style="margin-bottom: 16px;">Report Locations</h2>
+                <div id="crew-map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        let crewMap = null;
+        let crewData = null;
+        let currentUser = null;
+        let currentRole = 'guest';
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+        });
+
+        // Check authentication status on page load
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('check_auth.php', {
+                    method: 'GET',
+                    credentials: 'include', // Include cookies for session
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    // Check if user is crew or admin
+                    if (data.user.role !== 'crew' && data.user.role !== 'admin') {
+                        window.location.href = 'login.html?redirect=crew_dashboard.html';
+                        return false;
+                    }
+                    
+                    currentUser = data.user;
+                    currentRole = data.user.role;
+                    updateUIForAuth(true, data.user);
+                    
+                    // Load crew reports and initialize map after auth check
+                    loadCrewReports();
+                    initializeMap();
+                    
+                    return true;
+                } else {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    window.location.href = 'login.html?redirect=crew_dashboard.html';
+                    return false;
+                }
+            } catch (error) {
+                console.error('Error checking auth:', error);
+                updateUIForAuth(false, null);
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+
+        // Update UI based on authentication status
+        function updateUIForAuth(isAuthenticated, user) {
+            console.log('🔐 [crew_dashboard.html] Updating UI for auth:', { isAuthenticated, user });
+            
+            const guestAuth = document.getElementById('guestAuth');
+            const userAuth = document.getElementById('userAuth');
+            const sidebar = document.getElementById('mainSidebar');
+
+            // Update auth section
+            if (isAuthenticated && user) {
+                if (guestAuth) guestAuth.style.display = 'none';
+                if (userAuth) userAuth.style.display = 'block';
+                if (document.getElementById('userName')) {
+                    document.getElementById('userName').textContent = user.username;
+                }
+                if (document.getElementById('userRole')) {
+                    document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+                }
+                
+                console.log('✅ User authenticated:', user.username, user.role);
+            } else {
+                if (guestAuth) guestAuth.style.display = 'flex';
+                if (userAuth) userAuth.style.display = 'none';
+                
+                console.log('❌ Not authenticated (guest)');
+            }
+
+            // Update sidebar navigation visibility based on role
+            const allNavItems = document.querySelectorAll('.nav-item[data-role]');
+            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
+            
+            allNavItems.forEach(item => {
+                const requiredRole = item.getAttribute('data-role');
+                const itemName = item.querySelector('span')?.textContent || 'Unknown';
+                
+                // Always reset visibility
+                item.classList.remove('hidden');
+                item.style.display = '';
+                
+                let shouldShow = false;
+                
+                if (requiredRole === 'all') {
+                    // Always visible to everyone
+                    shouldShow = true;
+                } else if (requiredRole === 'crew-only') {
+                    // Only visible to crew members
+                    shouldShow = (isAuthenticated && user && user.role === 'crew');
+                } else if (requiredRole === 'admin') {
+                    // Visible to admin and crew (crew has admin-like privileges)
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'user') {
+                    // Visible to users, admins, and crew
+                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'not-admin') {
+                    // Visible to guests and users, hidden from admins and crew
+                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                }
+                
+                if (shouldShow) {
+                    item.style.display = 'flex';
+                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
+                } else {
+                    item.style.display = 'none';
+                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
+                }
+            });
+
+            // Show sidebar after auth check complete
+            if (sidebar) {
+                sidebar.classList.add('loaded');
+                console.log('🎨 Sidebar loaded and visible');
+            }
+        }
+
+        // Legacy function for compatibility
+        async function checkAuth() {
+            return await checkAuthStatus();
+        }
+
+        // Load crew reports
+        async function loadCrewReports() {
+            try {
+                const response = await fetch('get_crew_reports.php', {
+                    credentials: 'include' // Include cookies for session
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    crewData = data;
+                    updateStats(data);
+                    renderAssignedReports(data.assigned_reports);
+                    renderAvailableReports(data.unassigned_reports);
+                    updateMapMarkers(data);
+                }
+            } catch (error) {
+                console.error('Failed to load crew reports:', error);
+            }
+        }
+
+        // Update stats
+        function updateStats(data) {
+            document.getElementById('stat-assigned').textContent = data.total_assigned;
+            document.getElementById('stat-in-progress').textContent = data.status_counts.in_progress || 0;
+            document.getElementById('stat-completed').textContent = data.status_counts.solved || 0;
+            
+            // Count priority tasks (HIGH and CRITICAL)
+            const priorityCount = data.assigned_reports.filter(r => 
+                r.severity === 'HIGH' || r.severity === 'CRITICAL'
+            ).length;
+            document.getElementById('stat-priority').textContent = priorityCount;
+        }
+
+        // Render assigned reports
+        function renderAssignedReports(reports) {
+            const container = document.getElementById('assigned-reports');
+            
+            if (reports.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div class="empty-state-title">No Assigned Tasks</div>
+                        <div class="empty-state-text">You don't have any assigned reports at the moment.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = reports.map(report => `
+                <div class="report-card" onclick="viewReportDetails(${report.id}, '${report.report_type}')">
+                    <div class="report-header">
+                        <div>
+                            <div class="report-title">${escapeHtml(report.title)}</div>
+                            <div class="report-category">${report.category || 'General'}</div>
+                        </div>
+                        <span class="severity-badge severity-${(report.severity || 'medium').toLowerCase()}">
+                            ${report.severity || 'MEDIUM'}
+                        </span>
+                    </div>
+                    <div class="report-description">${escapeHtml(report.description || 'No description')}</div>
+                    <div class="report-meta">
+                        <span class="report-status status-${report.status}">${formatStatus(report.status)}</span>
+                        <span class="report-time">${formatTime(report.created_at)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render available reports
+        function renderAvailableReports(reports) {
+            const container = document.getElementById('available-reports');
+            
+            if (reports.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <div class="empty-state-title">All Caught Up!</div>
+                        <div class="empty-state-text">No high-priority unassigned reports at the moment.</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = reports.slice(0, 6).map(report => `
+                <div class="report-card" onclick="viewReportDetails(${report.id}, '${report.report_type}')">
+                    <div class="report-header">
+                        <div>
+                            <div class="report-title">${escapeHtml(report.title)}</div>
+                            <div class="report-category">${report.category || 'General'}</div>
+                        </div>
+                        <span class="severity-badge severity-${(report.severity || 'medium').toLowerCase()}">
+                            ${report.severity || 'MEDIUM'}
+                        </span>
+                    </div>
+                    <div class="report-description">${escapeHtml(report.description || 'No description')}</div>
+                    <div class="report-meta">
+                        <span class="report-status status-${report.status}">${formatStatus(report.status)}</span>
+                        <span class="report-time">${formatTime(report.created_at)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize map
+        function initializeMap() {
+            crewMap = L.map('crew-map').setView([40.7128, -74.0060], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(crewMap);
+        }
+
+        // Update map markers
+        function updateMapMarkers(data) {
+            if (!crewMap) return;
+            
+            // Clear existing markers
+            crewMap.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    crewMap.removeLayer(layer);
+                }
+            });
+            
+            const allReports = [...data.assigned_reports, ...data.unassigned_reports];
+            
+            allReports.forEach(report => {
+                if (report.latitude && report.longitude) {
+                    const markerColor = getSeverityColor(report.severity);
+                    const marker = L.circleMarker([report.latitude, report.longitude], {
+                        radius: 8,
+                        fillColor: markerColor,
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    }).addTo(crewMap);
+                    
+                    marker.bindPopup(`
+                        <b>${escapeHtml(report.title)}</b><br>
+                        ${report.category || 'General'}<br>
+                        Severity: ${report.severity}<br>
+                        Status: ${formatStatus(report.status)}
+                    `);
+                }
+            });
+            
+            // Fit bounds if there are reports
+            if (allReports.length > 0) {
+                const bounds = L.latLngBounds(
+                    allReports
+                        .filter(r => r.latitude && r.longitude)
+                        .map(r => [r.latitude, r.longitude])
+                );
+                if (bounds.isValid()) {
+                    crewMap.fitBounds(bounds, { padding: [50, 50] });
+                }
+            }
+        }
+
+        // View report details
+        function viewReportDetails(id, type) {
+            window.location.href = `history.html?report_id=${id}&type=${type}`;
+        }
+
+        // Helper functions
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatStatus(status) {
+            return (status || 'pending').replace('_', ' ').toUpperCase();
+        }
+
+        function formatTime(timestamp) {
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diff = Math.floor((now - date) / 1000); // seconds
+            
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return Math.floor(diff / 60) + ' mins ago';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' hours ago';
+            return Math.floor(diff / 86400) + ' days ago';
+        }
+
+        function getSeverityColor(severity) {
+            const colors = {
+                'CRITICAL': '#ef4444',
+                'HIGH': '#fbbf24',
+                'MEDIUM': '#3b82f6',
+                'LOW': '#10b981'
+            };
+            return colors[severity] || colors['MEDIUM'];
+        }
+
+        // Handle logout
+        async function handleLogout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+
+            try {
+                const response = await fetch('logout.php', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    currentUser = null;
+                    currentRole = 'guest';
+                    updateUIForAuth(false, null);
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out');
+            }
+        }
+
+        // Legacy logout function for compatibility
+        async function logout() {
+            await handleLogout();
+        }
+    </script>
+</body>
+</html>
+

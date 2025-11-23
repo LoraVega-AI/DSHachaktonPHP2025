@@ -646,6 +646,10 @@
             </div>
             
             <nav class="sidebar-nav">
+                <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
+                    <div class="nav-icon">C</div>
+                    <span>My Tasks</span>
+                </a>
                 <a href="index.html" class="nav-item" data-role="not-admin">
                     <div class="nav-icon">M</div>
                     <span>Monitor</span>
@@ -780,11 +784,13 @@
         // Check authentication status on page load
         async function checkAuthStatus() {
             try {
-                const response = await fetch('check_auth.php');
+                const response = await fetch('check_auth.php', {
+                    credentials: 'include' // Include cookies for session persistence
+                });
                 const data = await response.json();
                 
-                if (data.authenticated && data.user && data.user.role === 'admin') {
-                    // Only admins can access history
+                if (data.authenticated && data.user && (data.user.role === 'admin' || data.user.role === 'crew')) {
+                    // Admins and crew can access history (crew has admin-like privileges)
                     currentUser = data.user;
                     currentRole = data.user.role;
                     updateUIForAuth(true, data.user);
@@ -793,8 +799,8 @@
                     currentUser = null;
                     currentRole = 'guest';
                     updateUIForAuth(false, null);
-                    // Redirect non-admins (including regular users) to home
-                    alert('History access is restricted to administrators only.');
+                    // Redirect non-admins/non-crew to home
+                    alert('History access is restricted to administrators and crew members only.');
                     window.location.href = 'index.html';
                     return false;
                 }
@@ -821,7 +827,7 @@
                 guestAuth.style.display = 'none';
                 userAuth.style.display = 'block';
                 document.getElementById('userName').textContent = user.username;
-                document.getElementById('userRole').textContent = user.role;
+                document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
                 
                 console.log('✅ User authenticated:', user.username, user.role);
             } else {
@@ -831,44 +837,43 @@
                 console.log('❌ Not authenticated (guest)');
             }
 
-            // Update sidebar navigation visibility based on role using data-role attributes
+            // Update sidebar navigation visibility based on role
             const allNavItems = document.querySelectorAll('.nav-item[data-role]');
-            console.log('📋 Found nav items:', allNavItems.length);
+            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
             
             allNavItems.forEach(item => {
                 const requiredRole = item.getAttribute('data-role');
                 const itemName = item.querySelector('span')?.textContent || 'Unknown';
                 
-                // Remove hidden class first
+                // Always reset visibility
                 item.classList.remove('hidden');
+                item.style.display = '';
+                
+                let shouldShow = false;
                 
                 if (requiredRole === 'all') {
-                    // Always visible
-                    console.log(`  ✓ ${itemName}: Always visible (all)`);
-                } else if (requiredRole === 'not-admin') {
-                    // Visible for guests and users, hidden for admins
-                    if (isAuthenticated && user && user.role === 'admin') {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (admin detected)`);
-                    } else {
-                        console.log(`  ✓ ${itemName}: Visible (guest/user)`);
-                    }
-                } else if (requiredRole === 'user') {
-                    // Visible for registered users and admins
-                    if (isAuthenticated && user && (user.role === 'user' || user.role === 'admin')) {
-                        console.log(`  ✓ ${itemName}: Visible (user/admin)`);
-                    } else {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (need user/admin)`);
-                    }
+                    // Always visible to everyone
+                    shouldShow = true;
+                } else if (requiredRole === 'crew-only') {
+                    // Only visible to crew members
+                    shouldShow = (isAuthenticated && user && user.role === 'crew');
                 } else if (requiredRole === 'admin') {
-                    // Visible only for admins
-                    if (isAuthenticated && user && user.role === 'admin') {
-                        console.log(`  ✓ ${itemName}: Visible (admin only)`);
-                    } else {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (need admin)`);
-                    }
+                    // Visible to admin and crew (crew has admin-like privileges)
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'user') {
+                    // Visible to users, admins, and crew
+                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'not-admin') {
+                    // Visible to guests and users, hidden from admins and crew
+                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                }
+                
+                if (shouldShow) {
+                    item.style.display = 'flex';
+                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
+                } else {
+                    item.style.display = 'none';
+                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
                 }
             });
 

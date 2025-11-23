@@ -1,6 +1,9 @@
 <?php
 // login.php - User login endpoint
 
+// Start session FIRST before any output
+session_start();
+
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
@@ -9,6 +12,9 @@ header("Access-Control-Allow-Credentials: true");
 
 // Include authentication functions
 require_once __DIR__ . '/auth.php';
+
+// Ensure session is started
+startSession();
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);

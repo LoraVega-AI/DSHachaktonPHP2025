@@ -12,14 +12,21 @@ ini_set('log_errors', 1);
 
 require_once __DIR__ . '/db_config.php';
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/audit_helper.php';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Only POST requests are allowed');
     }
     
-    // Require admin role
-    requireRole('admin');
+    // Require authentication (admin or crew)
+    if (!isLoggedIn()) {
+        http_response_code(401);
+        throw new Exception('Authentication required');
+    }
+    
+    $userRole = getUserRole();
+    $currentUserId = getCurrentUserId();
 
     $data = json_decode(file_get_contents('php://input'), true);
     
@@ -35,10 +42,26 @@ try {
         throw new Exception('Report ID is required');
     }
 
-    // Validate status
-    $allowedStatuses = ['pending', 'solved', 'verified', 'false', 'spam'];
+    // Validate status (added 'in_progress')
+    $allowedStatuses = ['pending', 'in_progress', 'solved', 'verified', 'false', 'spam'];
     if (!in_array($newStatus, $allowedStatuses)) {
-        throw new Exception('Invalid status. Allowed: pending, solved, verified, false, spam');
+        throw new Exception('Invalid status. Allowed: pending, in_progress, solved, verified, false, spam');
+    }
+    
+    // Define which roles can set which statuses
+    $adminOnlyStatuses = ['verified', 'false', 'spam'];
+    $crewStatuses = ['pending', 'in_progress', 'solved'];
+    
+    // Check permissions based on role
+    if ($userRole === 'crew') {
+        // Crew can set pending, in_progress, solved for any report (admin-like privileges)
+        if (!in_array($newStatus, $crewStatuses)) {
+            http_response_code(403);
+            throw new Exception('Crew members can only set status to: pending, in_progress, solved');
+        }
+    } elseif ($userRole !== 'admin') {
+        http_response_code(403);
+        throw new Exception('Insufficient permissions to update report status');
     }
 
     $pdo = getDBConnection();
@@ -51,8 +74,8 @@ try {
         $tableName = $reportType === 'general' ? 'general_reports' : 'analysis_reports';
         $idColumn = 'id';
         
-        // Get current report status and user_id before updating
-        $getReportSql = "SELECT status, user_id FROM {$tableName} WHERE {$idColumn} = :id";
+        // Get current report status, user_id, and assignment before updating
+        $getReportSql = "SELECT status, user_id, assigned_to_user_id FROM {$tableName} WHERE {$idColumn} = :id";
         $getReportStmt = $pdo->prepare($getReportSql);
         $getReportStmt->execute([':id' => $reportId]);
         $report = $getReportStmt->fetch(PDO::FETCH_ASSOC);
@@ -60,6 +83,9 @@ try {
         if (!$report) {
             throw new Exception('Report not found');
         }
+        
+        // Crew members have admin-like privileges and can update any report
+        // No additional permission check needed for crew
         
         $oldStatus = $report['status'] ?? 'pending';
         $userId = $report['user_id'] ?? null;
@@ -138,6 +164,20 @@ try {
             ]);
         }
         
+        // Log to audit log
+        logAuditAction($reportId, $reportType, $currentUserId, 'status_change', $oldStatus, $newStatus);
+        
+        // Broadcast event for real-time updates (will be implemented with SSE)
+        if (function_exists('broadcastEvent')) {
+            broadcastEvent('status_change', [
+                'report_id' => $reportId,
+                'report_type' => $reportType,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'changed_by' => $currentUserId
+            ]);
+        }
+        
         // Commit transaction
         $pdo->commit();
         
@@ -146,8 +186,10 @@ try {
             'message' => "Report status updated to '{$newStatus}'",
             'report_id' => $reportId,
             'new_status' => $newStatus,
+            'old_status' => $oldStatus,
             'score_change' => $shouldUpdateScore ? $scoreChange : 0,
-            'user_id' => $userId
+            'user_id' => $userId,
+            'changed_by' => $currentUserId
         ]);
         
     } catch (Exception $e) {

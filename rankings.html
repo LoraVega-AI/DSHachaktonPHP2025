@@ -110,14 +110,22 @@
         }
 
         .nav-icon {
-            width: 20px;
-            height: 20px;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--surface);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
             font-weight: 700;
-            color: inherit;
+            font-size: 14px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .nav-item.active .nav-icon {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
         }
 
         /* Main Content Area */
@@ -465,6 +473,10 @@
             </div>
             
             <nav class="sidebar-nav">
+                <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
+                    <div class="nav-icon">C</div>
+                    <span>My Tasks</span>
+                </a>
                 <a href="index.html" class="nav-item" data-role="not-admin">
                     <div class="nav-icon">M</div>
                     <span>Monitor</span>
@@ -622,7 +634,7 @@
                 const userNameEl = document.getElementById('userName');
                 const userRoleEl = document.getElementById('userRole');
                 if (userNameEl) userNameEl.textContent = user.username;
-                if (userRoleEl) userRoleEl.textContent = user.role;
+                if (userRoleEl) userRoleEl.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
                 
                 console.log('✅ User authenticated:', user.username, user.role);
             } else {
@@ -632,44 +644,43 @@
                 console.log('❌ Not authenticated (guest)');
             }
 
-            // Update sidebar navigation visibility based on role using data-role attributes
+            // Update sidebar navigation visibility based on role
             const allNavItems = document.querySelectorAll('.nav-item[data-role]');
-            console.log('📋 Found nav items:', allNavItems.length);
+            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
             
             allNavItems.forEach(item => {
                 const requiredRole = item.getAttribute('data-role');
                 const itemName = item.querySelector('span')?.textContent || 'Unknown';
                 
-                // Remove hidden class first
+                // Always reset visibility
                 item.classList.remove('hidden');
+                item.style.display = '';
+                
+                let shouldShow = false;
                 
                 if (requiredRole === 'all') {
-                    // Always visible
-                    console.log(`  ✓ ${itemName}: Always visible (all)`);
-                } else if (requiredRole === 'not-admin') {
-                    // Visible for guests and users, hidden for admins
-                    if (isAuthenticated && user && user.role === 'admin') {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (admin detected)`);
-                    } else {
-                        console.log(`  ✓ ${itemName}: Visible (guest/user)`);
-                    }
-                } else if (requiredRole === 'user') {
-                    // Visible for registered users and admins
-                    if (isAuthenticated && user && (user.role === 'user' || user.role === 'admin')) {
-                        console.log(`  ✓ ${itemName}: Visible (user/admin)`);
-                    } else {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (need user/admin)`);
-                    }
+                    // Always visible to everyone
+                    shouldShow = true;
+                } else if (requiredRole === 'crew-only') {
+                    // Only visible to crew members
+                    shouldShow = (isAuthenticated && user && user.role === 'crew');
                 } else if (requiredRole === 'admin') {
-                    // Visible only for admins
-                    if (isAuthenticated && user && user.role === 'admin') {
-                        console.log(`  ✓ ${itemName}: Visible (admin only)`);
-                    } else {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (need admin)`);
-                    }
+                    // Visible to admin and crew (crew has admin-like privileges)
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'user') {
+                    // Visible to users, admins, and crew
+                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'not-admin') {
+                    // Visible to guests and users, hidden from admins and crew
+                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                }
+                
+                if (shouldShow) {
+                    item.style.display = 'flex';
+                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
+                } else {
+                    item.style.display = 'none';
+                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
                 }
             });
 
@@ -685,7 +696,9 @@
             if (!confirm('Are you sure you want to logout?')) return;
 
             try {
-                const response = await fetch('logout.php');
+                const response = await fetch('logout.php', {
+                    credentials: 'include'
+                });
                 const data = await response.json();
 
                 if (data.status === 'success') {

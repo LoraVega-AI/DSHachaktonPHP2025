@@ -1,5 +1,5 @@
 <?php
-// submit_report.php - Handle general report submissions
+// submit_analysis_report.php - Handle analysis-based report submissions
 
 header("Content-Type: application/json; charset=UTF-8");
 header("Access-Control-Allow-Origin: *");
@@ -22,20 +22,30 @@ try {
     }
 
     // Get form data
-    $title = $_POST['title'] ?? '';
-    $description = $_POST['description'] ?? '';
-    $severity = $_POST['severity'] ?? 'MEDIUM';
-    $category = $_POST['category'] ?? 'Other';
+    $title = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $severity = trim($_POST['severity'] ?? 'Medium');
+    $category = trim($_POST['category'] ?? 'Other');
     $timestamp = $_POST['timestamp'] ?? date('c');
+    $analysisType = $_POST['analysis_type'] ?? 'unknown';
+    $diagnosisData = isset($_POST['diagnosis_data']) ? json_decode($_POST['diagnosis_data'], true) : null;
     
     // Handle latitude/longitude - convert empty strings to null
     $latitude = isset($_POST['latitude']) && $_POST['latitude'] !== '' ? floatval($_POST['latitude']) : null;
     $longitude = isset($_POST['longitude']) && $_POST['longitude'] !== '' ? floatval($_POST['longitude']) : null;
-    $address = $_POST['address'] ?? '';
+    $address = trim($_POST['address'] ?? '');
+
+    // Log received data for debugging
+    error_log("📋 Analysis Report Submission - Title: '$title', Description length: " . strlen($description) . ", Severity: $severity, Category: $category");
 
     // Validate required fields
-    if (empty($title) || empty($description)) {
-        throw new Exception('Title and description are required');
+    if (empty($title)) {
+        error_log("❌ Validation failed: Title is empty");
+        throw new Exception('Title is required');
+    }
+    if (empty($description)) {
+        error_log("❌ Validation failed: Description is empty");
+        throw new Exception('Description is required');
     }
 
     // Create uploads directory if it doesn't exist
@@ -48,7 +58,7 @@ try {
     $uploadedAudio = [];
     $mediaFiles = []; // Track for media_files table
 
-    // Handle image uploads
+    // Handle image uploads (from image analysis)
     foreach ($_FILES as $key => $file) {
         if (strpos($key, 'image_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
             $allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -66,22 +76,6 @@ try {
                 $uploadedImages[] = $relPath;
                 $mediaFiles[] = ['path' => $relPath, 'type' => 'image'];
             }
-        } elseif (strpos($key, 'audio_') === 0 && $file['error'] === UPLOAD_ERR_OK) {
-            $allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/webm'];
-            
-            if (!in_array($file['type'], $allowedAudioTypes)) {
-                continue; // Skip invalid file types
-            }
-
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = 'audio_' . time() . '_' . uniqid() . '.' . $extension;
-            $filepath = $uploadDir . $filename;
-
-            if (move_uploaded_file($file['tmp_name'], $filepath)) {
-                $relPath = 'uploads/reports/' . $filename;
-                $uploadedAudio[] = $relPath;
-                $mediaFiles[] = ['path' => $relPath, 'type' => 'audio'];
-            }
         }
     }
 
@@ -92,7 +86,7 @@ try {
     $userId = getCurrentUserId();
     $isAnonymous = ($userId === null) ? true : false;
 
-    // Create reports table if it doesn't exist
+    // Create reports table if it doesn't exist (same as submit_report.php)
     $createTableSql = "CREATE TABLE IF NOT EXISTS general_reports (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT DEFAULT NULL,
@@ -203,6 +197,12 @@ try {
     if ($result) {
         $reportId = $pdo->lastInsertId();
         
+        // Verify the saved data
+        $verifyStmt = $pdo->prepare("SELECT title, description, severity, category FROM general_reports WHERE id = ?");
+        $verifyStmt->execute([$reportId]);
+        $savedReport = $verifyStmt->fetch(PDO::FETCH_ASSOC);
+        error_log("✅ Report saved - ID: $reportId, Saved Title: '" . ($savedReport['title'] ?? 'NOT FOUND') . "', Saved Description length: " . strlen($savedReport['description'] ?? ''));
+        
         // Insert media files into media_files table
         if (!empty($mediaFiles)) {
             $mediaStmt = $pdo->prepare("INSERT INTO media_files (report_id, report_type, file_path, file_type) VALUES (?, 'general', ?, ?)");
@@ -212,10 +212,27 @@ try {
         }
         
         // Validate report for cross-modal correlation
-        require_once __DIR__ . '/validate_reports.php';
-        $validationResult = validateReport($reportId, 'general');
-        if ($validationResult['status'] === 'validated') {
-            error_log("✅ Cross-modal validation: Report #$reportId validated with " . count($validationResult['correlations']) . " correlations");
+        $validationResult = [
+            'status' => 'skipped',
+            'message' => 'Validation skipped',
+            'correlations' => []
+        ];
+        try {
+            // Only validate if we have location data
+            if ($latitude !== null && $longitude !== null) {
+                require_once __DIR__ . '/validate_reports.php';
+                if (function_exists('validateReport')) {
+                    $validationResult = validateReport($reportId, 'general');
+                    if ($validationResult['status'] === 'validated') {
+                        error_log("✅ Cross-modal validation: Report #$reportId validated with " . count($validationResult['correlations']) . " correlations");
+                    }
+                }
+            } else {
+                $validationResult['message'] = 'Validation skipped - no location data';
+            }
+        } catch (Exception $validationError) {
+            error_log("⚠️ Validation error (non-fatal): " . $validationError->getMessage());
+            // Continue even if validation fails
         }
         
         // Check proximity alerts
@@ -229,14 +246,15 @@ try {
         
         echo json_encode([
             'status' => 'success',
-            'message' => 'Report submitted successfully',
+            'message' => 'Report created successfully from analysis',
             'report_id' => $reportId,
             'images_uploaded' => count($uploadedImages),
             'audio_uploaded' => count($uploadedAudio),
+            'analysis_type' => $analysisType,
             'validation' => $validationResult
         ], JSON_PRETTY_PRINT);
         
-        error_log("✅ General report submitted successfully (ID: $reportId)");
+        error_log("✅ Analysis-based report submitted successfully (ID: $reportId, Type: $analysisType)");
     } else {
         throw new Exception('Failed to save report to database');
     }
@@ -247,14 +265,14 @@ try {
         'status' => 'error',
         'message' => 'Database error: ' . $e->getMessage()
     ], JSON_PRETTY_PRINT);
-    error_log("❌ PDO Error in submit_report.php: " . $e->getMessage());
+    error_log("❌ PDO Error in submit_analysis_report.php: " . $e->getMessage());
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
         'status' => 'error',
         'message' => $e->getMessage()
     ], JSON_PRETTY_PRINT);
-    error_log("❌ Error in submit_report.php: " . $e->getMessage());
+    error_log("❌ Error in submit_analysis_report.php: " . $e->getMessage());
 }
 ?>
 

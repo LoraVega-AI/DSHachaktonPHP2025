@@ -1613,6 +1613,128 @@
             color: var(--text-primary);
         }
 
+        /* Location Modal Styles */
+        .location-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .location-modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .location-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .location-modal-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .location-close {
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .location-close:hover {
+            color: var(--text-primary);
+        }
+
+        .location-input-group {
+            margin-bottom: 20px;
+        }
+
+        .location-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .location-input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .location-input-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .location-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .location-button {
+            flex: 1;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .location-button.primary {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .location-button.primary:hover {
+            background: var(--accent-blue-light);
+        }
+
+        .location-button.secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .location-button.secondary:hover {
+            background: var(--card-bg);
+        }
+
+        .location-status {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .location-status.active {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
         .auth-form {
             display: flex;
             flex-direction: column;
@@ -1776,6 +1898,10 @@
             </div>
             
             <nav class="sidebar-nav">
+                <a href="crew_dashboard.html" class="nav-item" id="navCrewDashboard" data-role="crew-only" style="display:none;">
+                    <div class="nav-icon">C</div>
+                    <span>My Tasks</span>
+                </a>
                 <a href="index.html" class="nav-item active" data-role="not-admin">
                     <div class="nav-icon">M</div>
                     <span>Monitor</span>
@@ -1971,6 +2097,13 @@
                     <div class="risk-assessment-summary" id="risk-assessment-container" style="display: none;">
                         <!-- Will be populated by JavaScript -->
                     </div>
+
+                    <!-- Make Report Button -->
+                    <div id="audioMakeReportContainer" style="display: none; margin-top: 32px; text-align: center;">
+                        <button id="audioMakeReportButton" class="big-upload-button">
+                            <span style="margin-right: 8px;">📋</span>Make Report
+                        </button>
+                    </div>
                     </div>
 
                     <!-- Image Analysis Section -->
@@ -2026,6 +2159,13 @@
                         <!-- Image Risk Assessment Summary -->
                         <div class="risk-assessment-summary" id="imageRiskAssessment" style="display: none;">
                             <!-- Will be populated by JavaScript -->
+                        </div>
+
+                        <!-- Make Report Button -->
+                        <div id="imageMakeReportContainer" style="display: none; margin-top: 32px; text-align: center;">
+                            <button id="imageMakeReportButton" class="big-upload-button">
+                                <span style="margin-right: 8px;">📋</span>Make Report
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2304,21 +2444,8 @@
                     </div>
                 `;
             } else {
-                // For analysis reports, show confidence, frequency, RMS
-                metricsHtml = `
-                    <div class="metric">
-                        <span class="metric-value">${report.confidence !== null && report.confidence !== undefined ? report.confidence + '%' : 'N/A'}</span>
-                        <span class="metric-label">Confidence</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-value">${report.frequency || 'N/A'}</span>
-                        <span class="metric-label">Frequency</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-value">${report.rms || 'N/A'}</span>
-                        <span class="metric-label">RMS Level</span>
-                    </div>
-                `;
+                // For analysis reports, no metrics displayed
+                metricsHtml = '';
             }
 
             // User profile section HTML
@@ -3222,6 +3349,14 @@
                 if (result.status === 'success') {
                     console.log('✅ AI report generated successfully from uploaded audio file');
                     console.log('📋 Report saved to database:', result.report_saved ? 'YES' : 'NO');
+                    
+                    // Store diagnosis data for report generation
+                    if (result.diagnosis) {
+                        window.currentAudioAnalysis = result.diagnosis;
+                        currentAudioAnalysis = result.diagnosis;
+                        console.log('💾 Audio analysis data stored for report generation');
+                    }
+                    
                     // Update UI with the structured report
                     const resultElement = document.getElementById('result');
                     if (resultElement) {
@@ -3237,6 +3372,13 @@
                                 '<pre style="background: var(--surface); padding: 20px; border-radius: 8px; overflow-x: auto;">' +
                                 JSON.stringify(result.diagnosis, null, 2) + '</pre></div>';
                         }
+                    }
+                    
+                    // Show Make Report button
+                    const makeReportContainer = document.getElementById('audioMakeReportContainer');
+                    if (makeReportContainer && result.diagnosis) {
+                        makeReportContainer.style.display = 'block';
+                        console.log('✅ Make Report button shown for audio analysis');
                     }
 
                     // Update status
@@ -3531,11 +3673,35 @@
             if (imageHazardEntries) {
                 imageHazardEntries.innerHTML = '';
 
-                // Process detected signatures for IMAGE section only
-                diagnosis.detected_signatures.forEach(signature => {
-                    const hazardEntry = createImageHazardEntry(signature, diagnosis);
-                    imageHazardEntries.appendChild(hazardEntry);
-                });
+                // Process detected signatures with confidence-based conditional display
+                const confidence = parseFloat(diagnosis.confidence_score) || 0;
+                const showMultiple = confidence < 0.8;
+                
+                if (diagnosis.detected_signatures && diagnosis.detected_signatures.length > 0) {
+                    if (showMultiple && diagnosis.top_detections && diagnosis.top_detections.length > 0) {
+                        // Show top 3 detections when confidence < 80%
+                        diagnosis.top_detections.slice(0, 3).forEach((detection, index) => {
+                            const signature = {
+                                signature_name: detection.detection_name || diagnosis.detected_signatures[0].signature_name,
+                                classification: detection.description || diagnosis.detected_signatures[0].classification,
+                                severity: diagnosis.detected_signatures[0].severity || 'UNKNOWN',
+                                status: diagnosis.detected_signatures[0].status || 'PROBLEM',
+                                recommended_action: diagnosis.detected_signatures[0].recommended_action
+                            };
+                            const hazardEntry = createImageHazardEntry(signature, {
+                                ...diagnosis,
+                                confidence_score: detection.confidence / 100.0
+                            }, index > 0);
+                            imageHazardEntries.appendChild(hazardEntry);
+                        });
+                    } else {
+                        // Show only primary detection when confidence >= 80%
+                        diagnosis.detected_signatures.slice(0, 1).forEach(signature => {
+                            const hazardEntry = createImageHazardEntry(signature, diagnosis);
+                            imageHazardEntries.appendChild(hazardEntry);
+                        });
+                    }
+                }
             }
 
             // Update image executive conclusion (image-specific element)
@@ -3559,10 +3725,18 @@
                 statusSection.querySelector('.status-text').textContent = 'Analysis Complete';
                 statusSection.querySelector('.status-details').textContent = 'AI report generated from image';
             }
+
+            // Store diagnosis data globally for report generation
+            currentImageAnalysis = diagnosis;
+            // Show Make Report button if analysis is complete
+            const makeReportContainer = document.getElementById('imageMakeReportContainer');
+            if (makeReportContainer) {
+                makeReportContainer.style.display = 'block';
+            }
         }
 
         // Create hazard entry for image analysis (separate from audio)
-        function createImageHazardEntry(signature, diagnosis) {
+        function createImageHazardEntry(signature, diagnosis, isAlternative = false) {
             const entry = document.createElement('div');
             entry.className = 'hazard-entry';
 
@@ -3570,6 +3744,7 @@
                                  (signature.severity === 'HIGH' ? 'status-problem' : 'status-safe');
 
             entry.innerHTML = `
+                ${isAlternative ? `<div style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">Alternative Detection</div>` : ''}
                 <div class="hazard-header">
                     <div class="hazard-name">${escapeHtml(signature.signature_name || 'Issue Detected')}</div>
                     <div class="status-indicator">
@@ -3646,16 +3821,584 @@
         }
 
         // ============================================
+        // REPORT GENERATION FROM ANALYSIS
+        // ============================================
+
+        // Generate report from analysis data
+        function generateReportFromAnalysis(analysisType) {
+            let diagnosis = null;
+            
+            if (analysisType === 'audio') {
+                // Try multiple ways to get audio analysis data
+                diagnosis = window.currentAudioAnalysis || currentAudioAnalysis;
+                
+                // If still not found, try to get from the result element
+                if (!diagnosis) {
+                    console.log('⚠️ Audio analysis data not found in variables, checking result element...');
+                    // The data should be stored when formatAnalysisResults is called
+                    // Let's check if we can get it from the window object
+                    if (window.currentAudioAnalysis) {
+                        diagnosis = window.currentAudioAnalysis;
+                        console.log('✅ Found audio analysis data in window.currentAudioAnalysis');
+                    }
+                }
+            } else {
+                diagnosis = currentImageAnalysis;
+            }
+            
+            if (!diagnosis) {
+                console.error('❌ No analysis data available:', {
+                    analysisType: analysisType,
+                    windowCurrentAudio: !!window.currentAudioAnalysis,
+                    currentAudio: !!currentAudioAnalysis,
+                    currentImage: !!currentImageAnalysis
+                });
+                alert('No analysis data available. Please complete an analysis first.\n\nMake sure the analysis has finished and results are displayed.');
+                return;
+            }
+            
+            console.log('✅ Using diagnosis data for report generation:', {
+                analysisType: analysisType,
+                hasDiagnosis: !!diagnosis,
+                hasSignatures: !!(diagnosis.detected_signatures && diagnosis.detected_signatures.length > 0),
+                hasRiskAssessment: !!diagnosis.risk_assessment
+            });
+
+            // Format report data from diagnosis
+            const reportData = formatAnalysisToReport(analysisType, diagnosis);
+            
+            // Store pending report data
+            pendingReportData = reportData;
+            
+            // Show location input modal
+            showLocationInputModal();
+        }
+
+        // Format analysis diagnosis into report structure
+        function formatAnalysisToReport(analysisType, diagnosis) {
+            // Extract title
+            let title = '';
+            if (analysisType === 'audio') {
+                const signatureName = diagnosis.detected_signatures?.[0]?.signature_name || 
+                                     diagnosis.top_hazard || 
+                                     'Audio Analysis';
+                title = `Audio Analysis: ${signatureName}`;
+            } else {
+                const category = diagnosis.category || 'Infrastructure Issue';
+                title = `Image Analysis: ${category}`;
+            }
+
+            // Format description from analysis components
+            let description = '';
+            
+            // Add executive conclusion
+            if (diagnosis.executive_conclusion) {
+                description += diagnosis.executive_conclusion;
+                // Remove HTML tags if present
+                description = description.replace(/<[^>]*>/g, '');
+                description += '\n\n';
+            }
+            
+            // Add detected signatures/issues
+            if (diagnosis.detected_signatures && diagnosis.detected_signatures.length > 0) {
+                description += 'DETECTED ISSUES:\n';
+                description += '='.repeat(50) + '\n';
+                diagnosis.detected_signatures.forEach((sig, index) => {
+                    description += `${index + 1}. ${sig.signature_name || 'Issue'}\n`;
+                    description += `   Classification: ${sig.classification || 'No description'}\n`;
+                    if (sig.severity) {
+                        description += `   Severity: ${sig.severity}\n`;
+                    }
+                    if (sig.recommended_action) {
+                        description += `   Recommended Action: ${sig.recommended_action}\n`;
+                    }
+                    description += '\n';
+                });
+            }
+            
+            // Add risk assessment summary
+            if (diagnosis.risk_assessment) {
+                const risk = diagnosis.risk_assessment;
+                description += 'RISK ASSESSMENT:\n';
+                description += '='.repeat(50) + '\n';
+                description += `Severity Level: ${risk.severity || 'N/A'}\n`;
+                description += `Is This a Problem: ${risk.is_problem || 'N/A'}\n`;
+                if (risk.should_investigate) {
+                    description += `Should Investigate: ${risk.should_investigate}\n`;
+                }
+                if (risk.who_to_contact) {
+                    description += `Who to Contact: ${risk.who_to_contact}\n`;
+                }
+                if (risk.risk_description) {
+                    description += `\nRisk Description:\n${risk.risk_description}\n`;
+                }
+                if (risk.action_steps) {
+                    // Handle both array and string formats
+                    let actionSteps = [];
+                    if (Array.isArray(risk.action_steps)) {
+                        actionSteps = risk.action_steps;
+                    } else if (typeof risk.action_steps === 'string') {
+                        // If it's a string, try to split by newlines or use as single step
+                        actionSteps = risk.action_steps.split('\n').filter(s => s.trim());
+                        if (actionSteps.length === 0) {
+                            actionSteps = [risk.action_steps];
+                        }
+                    }
+                    
+                    if (actionSteps.length > 0) {
+                        description += `\nRecommended Action Steps:\n`;
+                        actionSteps.forEach((step, index) => {
+                            description += `  ${index + 1}. ${step}\n`;
+                        });
+                    }
+                }
+                description += '\n';
+            }
+            
+            // Add confidence score
+            if (diagnosis.confidence_score) {
+                description += `Analysis Confidence: ${(diagnosis.confidence_score * 100).toFixed(1)}%\n`;
+            }
+            
+            // Add analysis metadata
+            if (diagnosis.category) {
+                description += `Category: ${diagnosis.category}\n`;
+            }
+            
+            // Trim and clean up description
+            description = description.trim();
+
+            // Map severity
+            let severity = 'MEDIUM';
+            if (diagnosis.risk_assessment?.severity) {
+                const riskSeverity = diagnosis.risk_assessment.severity.toUpperCase();
+                if (riskSeverity === 'CRITICAL') severity = 'Critical';
+                else if (riskSeverity === 'HIGH') severity = 'High';
+                else if (riskSeverity === 'MEDIUM') severity = 'Medium';
+                else if (riskSeverity === 'LOW') severity = 'Low';
+            } else if (diagnosis.detected_signatures?.[0]?.severity) {
+                const sigSeverity = diagnosis.detected_signatures[0].severity.toUpperCase();
+                if (sigSeverity === 'CRITICAL') severity = 'Critical';
+                else if (sigSeverity === 'HIGH') severity = 'High';
+                else if (sigSeverity === 'MEDIUM') severity = 'Medium';
+                else if (sigSeverity === 'LOW') severity = 'Low';
+            }
+
+            // Determine category
+            let category = diagnosis.category || 'Other';
+            if (analysisType === 'audio') {
+                if (!category || category === 'Other') {
+                    // Try to infer from signature
+                    const signatureName = diagnosis.detected_signatures?.[0]?.signature_name || '';
+                    if (signatureName.toLowerCase().includes('acoustic') || 
+                        signatureName.toLowerCase().includes('sound') ||
+                        signatureName.toLowerCase().includes('noise')) {
+                        category = 'Acoustic Issue';
+                    } else {
+                        category = 'Acoustic Issue';
+                    }
+                }
+            } else {
+                if (!category || category === 'Other') {
+                    category = 'Visual Issue';
+                }
+            }
+
+            const reportData = {
+                analysisType: analysisType,
+                title: title,
+                description: description.trim(),
+                severity: severity,
+                category: category,
+                diagnosis: diagnosis,
+                imageBase64: analysisType === 'image' ? currentImageBase64 : null
+            };
+            
+            // Log the formatted report data
+            console.log('📋 Formatted report data:', {
+                title: reportData.title,
+                descriptionPreview: reportData.description.substring(0, 100) + '...',
+                severity: reportData.severity,
+                category: reportData.category,
+                hasDiagnosis: !!reportData.diagnosis
+            });
+            
+            return reportData;
+        }
+
+        // Show location input modal
+        function showLocationInputModal() {
+            const modal = document.getElementById('locationModal');
+            if (modal) {
+                modal.style.display = 'block';
+                // Reset location inputs
+                const addressInput = document.getElementById('reportLocationAddress');
+                const latInput = document.getElementById('reportLocationLatitude');
+                const lngInput = document.getElementById('reportLocationLongitude');
+                const statusEl = document.getElementById('locationStatus');
+                
+                if (addressInput) addressInput.value = '';
+                if (latInput) latInput.value = '';
+                if (lngInput) lngInput.value = '';
+                if (statusEl) {
+                    statusEl.textContent = 'Click "Use Current Location" to get GPS coordinates';
+                    statusEl.className = '';
+                    statusEl.style.color = 'var(--text-muted)';
+                }
+                
+                // Automatically try to get location when modal opens (optional - can be removed if too intrusive)
+                // Uncomment the line below if you want automatic location request
+                // setTimeout(() => { if (window.getLocationForReport) window.getLocationForReport(); }, 500);
+            }
+        }
+
+        // Close location modal (make globally accessible)
+        window.closeLocationModal = function() {
+            const modal = document.getElementById('locationModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            pendingReportData = null;
+        }
+
+        // Get location for report (make globally accessible)
+        window.getLocationForReport = function() {
+            const statusEl = document.getElementById('locationStatus');
+            
+            if (!navigator.geolocation) {
+                statusEl.textContent = 'GPS not supported by your browser';
+                statusEl.className = '';
+                alert('GPS is not supported by your browser. Please enter an address manually.');
+                return;
+            }
+
+            statusEl.textContent = 'Getting location...';
+            statusEl.className = '';
+            statusEl.style.color = 'var(--accent-blue)';
+
+            // Request location with better options
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Store coordinates
+                    const latInput = document.getElementById('reportLocationLatitude');
+                    const lngInput = document.getElementById('reportLocationLongitude');
+                    if (latInput) latInput.value = lat;
+                    if (lngInput) lngInput.value = lng;
+                    
+                    statusEl.textContent = `✅ Location set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                    statusEl.className = 'location-status active';
+                    statusEl.style.color = 'var(--accent-green)';
+                    
+                    // Reverse geocode to get address
+                    statusEl.textContent = 'Getting address...';
+                    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+                        headers: {
+                            'User-Agent': 'UrbanPulse/1.0'
+                        }
+                    })
+                        .then(res => {
+                            if (!res.ok) throw new Error('Geocoding failed');
+                            return res.json();
+                        })
+                        .then(data => {
+                            if (data && data.display_name) {
+                                const addressInput = document.getElementById('reportLocationAddress');
+                                if (addressInput) {
+                                    addressInput.value = data.display_name;
+                                }
+                            }
+                            statusEl.textContent = `✅ Location set: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                            statusEl.className = 'location-status active';
+                            statusEl.style.color = 'var(--accent-green)';
+                        })
+                        .catch(err => {
+                            console.error('Reverse geocoding error:', err);
+                            statusEl.textContent = `✅ Location set: ${lat.toFixed(6)}, ${lng.toFixed(6)} (address lookup failed)`;
+                            statusEl.className = 'location-status active';
+                            statusEl.style.color = 'var(--accent-green)';
+                        });
+                },
+                function(error) {
+                    let errorMsg = 'Location error';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = '❌ Location permission denied. Please enable location access in your browser settings or enter address manually.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = '❌ Location unavailable. Please try again or enter address manually.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = '❌ Location request timeout. Please try again or enter address manually.';
+                            break;
+                        default:
+                            errorMsg = '❌ Location error occurred. Please enter address manually.';
+                            break;
+                    }
+                    statusEl.textContent = errorMsg;
+                    statusEl.className = '';
+                    statusEl.style.color = 'var(--accent-orange)';
+                    alert(errorMsg);
+                },
+                options
+            );
+        };
+
+        // Submit report with location (make globally accessible)
+        window.submitReportWithLocation = async function() {
+            if (!pendingReportData) {
+                alert('No report data available. Please complete an analysis first.');
+                return;
+            }
+
+            const latInput = document.getElementById('reportLocationLatitude');
+            const lngInput = document.getElementById('reportLocationLongitude');
+            const addressInput = document.getElementById('reportLocationAddress');
+
+            const latitude = latInput ? latInput.value : '';
+            const longitude = lngInput ? lngInput.value : '';
+            const address = addressInput ? addressInput.value.trim() : '';
+
+            // Try to get location if not set but address is provided
+            if ((!latitude || !longitude) && address) {
+                // Try to geocode the address
+                try {
+                    const geocodeResponse = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`, {
+                        headers: {
+                            'User-Agent': 'UrbanPulse/1.0'
+                        }
+                    });
+                    const geocodeData = await geocodeResponse.json();
+                    if (geocodeData && geocodeData.length > 0) {
+                        const lat = parseFloat(geocodeData[0].lat);
+                        const lng = parseFloat(geocodeData[0].lon);
+                        if (latInput) latInput.value = lat;
+                        if (lngInput) lngInput.value = lng;
+                        // Use the updated values
+                        const updatedLat = lat;
+                        const updatedLng = lng;
+                        
+                        // Prepare report data with geocoded location
+                        const reportData = {
+                            ...pendingReportData,
+                            latitude: updatedLat,
+                            longitude: updatedLng,
+                            address: address || null
+                        };
+
+                        // Show loading state
+                        const submitButton = document.querySelector('#locationModal .location-button.primary');
+                        const originalText = submitButton.textContent;
+                        submitButton.disabled = true;
+                        submitButton.textContent = 'Creating Report...';
+
+                        try {
+                            await submitAnalysisReport(reportData);
+                        } catch (error) {
+                            console.error('Error submitting report:', error);
+                            alert('Error creating report: ' + error.message);
+                            submitButton.disabled = false;
+                            submitButton.textContent = originalText;
+                        }
+                        return;
+                    }
+                } catch (geocodeError) {
+                    console.error('Geocoding error:', geocodeError);
+                }
+            }
+
+            // Location is optional, but warn if not provided
+            if (!latitude || !longitude) {
+                const proceed = confirm('No GPS location provided. The report will be created without location coordinates.\n\nYou can still enter an address manually for reference.\n\nContinue?');
+                if (!proceed) {
+                    return;
+                }
+            }
+
+            // Prepare report data
+            const reportData = {
+                ...pendingReportData,
+                latitude: latitude ? parseFloat(latitude) : null,
+                longitude: longitude ? parseFloat(longitude) : null,
+                address: address || null
+            };
+
+            // Show loading state
+            const submitButton = document.querySelector('#locationModal .location-button.primary');
+            if (!submitButton) {
+                alert('Error: Submit button not found');
+                return;
+            }
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = 'Creating Report...';
+
+            try {
+                await submitAnalysisReport(reportData);
+            } catch (error) {
+                console.error('Error submitting report:', error);
+                alert('Error creating report: ' + (error.message || 'Unknown error occurred'));
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+            }
+        };
+
+        // Submit analysis report to backend
+        async function submitAnalysisReport(reportData) {
+            try {
+                // Log what we're sending
+                console.log('📤 Submitting report with data:', {
+                    title: reportData.title,
+                    descriptionLength: reportData.description.length,
+                    severity: reportData.severity,
+                    category: reportData.category,
+                    analysisType: reportData.analysisType
+                });
+                
+                const formData = new FormData();
+                formData.append('title', reportData.title || 'Untitled Report');
+                formData.append('description', reportData.description || 'No description provided');
+                formData.append('severity', reportData.severity || 'Medium');
+                formData.append('category', reportData.category || 'Other');
+                formData.append('timestamp', new Date().toISOString());
+                formData.append('analysis_type', reportData.analysisType || 'unknown');
+                formData.append('diagnosis_data', JSON.stringify(reportData.diagnosis || {}));
+                
+                if (reportData.latitude) {
+                    formData.append('latitude', reportData.latitude);
+                }
+                if (reportData.longitude) {
+                    formData.append('longitude', reportData.longitude);
+                }
+                if (reportData.address) {
+                    formData.append('address', reportData.address);
+                }
+
+                // Add image if available
+                if (reportData.imageBase64) {
+                    // Convert base64 to blob
+                    const byteCharacters = atob(reportData.imageBase64);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'image/jpeg' });
+                    formData.append('image_0', blob, 'analysis_image.jpg');
+                }
+
+                const response = await fetch('submit_analysis_report.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Check if response is OK
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}`);
+                }
+
+                // Parse JSON response
+                let result;
+                try {
+                    const responseText = await response.text();
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    throw new Error('Invalid response from server. Please try again.');
+                }
+
+                if (result.status === 'success') {
+                    // Close modal
+                    closeLocationModal();
+                    
+                    // Show success message with better formatting
+                    const successMsg = `✅ Report created successfully!\n\nReport ID: ${result.report_id}\nTitle: ${reportData.title}\n\nThis report is now visible to admins and will appear on the map.`;
+                    alert(successMsg);
+                    
+                    // Reload detection history if available
+                    if (typeof window.reloadDetectionHistory === 'function') {
+                        setTimeout(() => {
+                            window.reloadDetectionHistory();
+                        }, 500);
+                    }
+                } else {
+                    throw new Error(result.message || 'Failed to create report');
+                }
+            } catch (error) {
+                console.error('Error submitting analysis report:', error);
+                throw error;
+            }
+        }
+
+        // Add event listeners for Make Report buttons
+        document.addEventListener('DOMContentLoaded', () => {
+            const audioMakeReportBtn = document.getElementById('audioMakeReportButton');
+            const imageMakeReportBtn = document.getElementById('imageMakeReportButton');
+
+            if (audioMakeReportBtn) {
+                audioMakeReportBtn.addEventListener('click', () => {
+                    console.log('📋 Make Report button clicked for audio analysis');
+                    generateReportFromAnalysis('audio');
+                });
+            } else {
+                console.warn('⚠️ audioMakeReportButton not found');
+            }
+
+            if (imageMakeReportBtn) {
+                imageMakeReportBtn.addEventListener('click', () => {
+                    console.log('📋 Make Report button clicked for image analysis');
+                    generateReportFromAnalysis('image');
+                });
+            } else {
+                console.warn('⚠️ imageMakeReportButton not found');
+            }
+
+            // Close modal when clicking outside
+            const locationModal = document.getElementById('locationModal');
+            if (locationModal) {
+                locationModal.addEventListener('click', (e) => {
+                    if (e.target === locationModal) {
+                        closeLocationModal();
+                    }
+                });
+            }
+        });
+
+        // ============================================
         // AUTHENTICATION FUNCTIONS
         // ============================================
 
         let currentUser = null;
         let currentRole = 'guest';
 
+        // Store analysis data for report generation
+        let currentAudioAnalysis = null;
+        let currentImageAnalysis = null;
+        let pendingReportData = null; // Store report data while waiting for location
+
+        // Listen for audio analysis completion event from classifier.js
+        document.addEventListener('audioAnalysisComplete', function(event) {
+            if (event.detail && event.detail.diagnosis) {
+                currentAudioAnalysis = event.detail.diagnosis;
+                console.log('✅ Audio analysis data received via event and stored locally');
+            }
+        });
+
         // Check authentication status on page load
         async function checkAuthStatus() {
             try {
-                const response = await fetch('check_auth.php');
+                const response = await fetch('check_auth.php', {
+                    credentials: 'include' // Include cookies for session persistence
+                });
                 const data = await response.json();
                 
                 if (data.authenticated && data.user) {
@@ -3688,7 +4431,7 @@
                 guestAuth.style.display = 'none';
                 userAuth.style.display = 'block';
                 document.getElementById('userName').textContent = user.username;
-                document.getElementById('userRole').textContent = user.role;
+                document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
                 
                 // Show detection history section for authenticated users
                 if (detectionHistorySection) {
@@ -3716,44 +4459,43 @@
                 console.log('❌ Not authenticated (guest)');
             }
 
-            // Update sidebar navigation visibility based on role using data-role attributes
+            // Update sidebar navigation visibility based on role
             const allNavItems = document.querySelectorAll('.nav-item[data-role]');
-            console.log('📋 Found nav items:', allNavItems.length);
+            console.log('📋 Found nav items:', allNavItems.length, 'User role:', user?.role);
             
             allNavItems.forEach(item => {
                 const requiredRole = item.getAttribute('data-role');
                 const itemName = item.querySelector('span')?.textContent || 'Unknown';
                 
-                // Remove hidden class first
+                // Always reset visibility
                 item.classList.remove('hidden');
+                item.style.display = '';
+                
+                let shouldShow = false;
                 
                 if (requiredRole === 'all') {
-                    // Always visible
-                    console.log(`  ✓ ${itemName}: Always visible (all)`);
-                } else if (requiredRole === 'not-admin') {
-                    // Visible for guests and users, hidden for admins
-                    if (isAuthenticated && user && user.role === 'admin') {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (admin detected)`);
-                    } else {
-                        console.log(`  ✓ ${itemName}: Visible (guest/user)`);
-                    }
-                } else if (requiredRole === 'user') {
-                    // Visible for registered users and admins
-                    if (isAuthenticated && user && (user.role === 'user' || user.role === 'admin')) {
-                        console.log(`  ✓ ${itemName}: Visible (user/admin)`);
-                    } else {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (need user/admin)`);
-                    }
+                    // Always visible to everyone
+                    shouldShow = true;
+                } else if (requiredRole === 'crew-only') {
+                    // Only visible to crew members
+                    shouldShow = (isAuthenticated && user && user.role === 'crew');
                 } else if (requiredRole === 'admin') {
-                    // Visible only for admins
-                    if (isAuthenticated && user && user.role === 'admin') {
-                        console.log(`  ✓ ${itemName}: Visible (admin only)`);
-                    } else {
-                        item.classList.add('hidden');
-                        console.log(`  ✗ ${itemName}: Hidden (need admin)`);
-                    }
+                    // Visible to admin and crew (crew has admin-like privileges)
+                    shouldShow = (isAuthenticated && user && (user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'user') {
+                    // Visible to users, admins, and crew
+                    shouldShow = (isAuthenticated && user && (user.role === 'user' || user.role === 'admin' || user.role === 'crew'));
+                } else if (requiredRole === 'not-admin') {
+                    // Visible to guests and users, hidden from admins and crew
+                    shouldShow = (!isAuthenticated || !user || (user.role !== 'admin' && user.role !== 'crew'));
+                }
+                
+                if (shouldShow) {
+                    item.style.display = 'flex';
+                    console.log(`  ✓ ${itemName}: VISIBLE for ${user?.role || 'guest'}`);
+                } else {
+                    item.style.display = 'none';
+                    console.log(`  ✗ ${itemName}: HIDDEN for ${user?.role || 'guest'}`);
                 }
             });
 
@@ -3955,6 +4697,35 @@
             </form>
             <div class="auth-switch">
                 Already have an account? <a onclick="closeRegisterModal(); showLoginModal();">Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Input Modal for Report Generation -->
+    <div id="locationModal" class="location-modal">
+        <div class="location-modal-content">
+            <div class="location-modal-header">
+                <h2>Add Location to Report</h2>
+                <span class="location-close" onclick="closeLocationModal()">&times;</span>
+            </div>
+            <div class="location-input-group">
+                <label>Get GPS Location</label>
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <button type="button" class="location-button primary" onclick="getLocationForReport()" style="flex: 1; font-size: 16px; padding: 14px 24px;">
+                        <span style="font-size: 20px; margin-right: 8px;">📍</span> Use Current GPS Location
+                    </button>
+                </div>
+                <div id="locationStatus" style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; min-height: 20px;">Click the button above to get your current location</div>
+            </div>
+            <div class="location-input-group">
+                <label>Or Enter Address Manually</label>
+                <input type="text" id="reportLocationAddress" placeholder="Street address or landmark">
+            </div>
+            <input type="hidden" id="reportLocationLatitude">
+            <input type="hidden" id="reportLocationLongitude">
+            <div class="location-buttons">
+                <button type="button" class="location-button secondary" onclick="closeLocationModal()">Cancel</button>
+                <button type="button" class="location-button primary" onclick="submitReportWithLocation()">Create Report</button>
             </div>
         </div>
     </div>
